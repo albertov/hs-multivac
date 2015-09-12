@@ -3,3 +3,4 @@ dist
 results
 cabal.sandbox.config
 .*.sw?
+Prueba*

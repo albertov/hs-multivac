@@ -1,21 +1,21 @@
-name:                hs-multivac
-version:             0.1.0.0
-synopsis:            Haskell bindings to the Multivac library
+name:                  hs-multivac
+version:               0.1.0.0
+synopsis:              Haskell bindings to the Multivac library
 -- description:         
-homepage:            https://github.com/meteogrid/hs-multivac
-license:             GPL-2
-license-file:        LICENSE
-author:              Alberto Valverde González
-maintainer:          alberto@toscat.net
-copyright:           2015
-category:            Bindings
-build-type:          Simple
-extra-source-files:  README.md
-cabal-version:       >=1.10
+homepage:              https://github.com/meteogrid/hs-multivac
+license:               GPL-2
+license-file:          LICENSE
+author:                Alberto Valverde González
+maintainer:            alberto@toscat.net
+copyright:             2015
+category:              Bindings
+build-type:            Simple
+extra-source-files:    README.md
+cabal-version:         >=1.10
 
 source-repository head
-  type:              git
-  location:          https://github.com/meteogrid/hs-multivac.git
+  type:                git
+  location:            https://github.com/meteogrid/hs-multivac.git
 
 library
   build-tools:         c2hs
@@ -26,7 +26,8 @@ library
   ghc-options:         -Wall
                        -fwarn-incomplete-patterns
                        -fwarn-incomplete-uni-patterns
+  extra-libraries:     stdc++
   c-sources:           cbits/cbits.cpp
   include-dirs:        cbits
                      , Multivac-1.10.1
-  cc-options:          -Wall -O2
+  cc-options:          -Wall -O2 -DMULTIVAC_REPORT

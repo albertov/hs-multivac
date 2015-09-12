@@ -1,117 +1,54 @@
-/************************
- * INCLUDES AND OPTIONS *
- ************************/
-
-// Seldon library and Multivac project provide error management
-// using exception handling.  Exceptions that may be raised
-// are selected according to debug levels.
-#define MULTIVAC_DEBUG_LEVEL_2
-
-// Define MULTIVAC_REPORT if you want to clock the time needed for
-// updates and initializations (results will be displayed on screen).
-#define MULTIVAC_REPORT
-
-// Multivac includes.
-#include "multivac.hxx"
-
 #include "cbits.h"
 
-using namespace Multivac;
 
-
-/*****************
- * MAIN FUNCTION *
- *****************/
-
-int my_main()
+MVMeshH
+MVNewMesh ( double Xmin, double Xmax, double Ymin, double Ymax
+          , double Nx, double Ny)
 {
+  MeshType *mesh = new MeshType(Xmin, Xmax, Ymin, Ymax, Nx, Ny);
+  return static_cast<MVMeshH>(mesh);
+}
 
-  // To catch exceptions.
-  TRY;
-  
-  // real type: double, float...
-  typedef double real;
+void MVDestroyMesh(MVMeshH meshH)
+{
+  MeshType *mesh = static_cast<MeshType*>(meshH);
+  delete mesh;
+}
 
+MVSpeedH
+MVNewSpeed ( FastMarchSpeedFunc fm, NarrowBandSpeedFunc nb
+           , MaxFSpeedFunc f1, MaxFSpeedFunc f2
+           , int depPos, int depTime, int depNormal, int depCurv)
+{
+  SpeedFuncCallbacks cb = {fm, nb, f1, f2, depPos, depTime, depNormal, depCurv};
+  SpeedType *speed = new SpeedType(cb);
+  return static_cast<MVSpeedH>(speed);
+}
+
+void MVDestroySpeed(MVSpeedH speedH)
+{
+  SpeedType *speed = static_cast<SpeedType*>(speedH);
+  delete speed;
+}
+
+
+void Simulate(MVMeshH meshPtr, MVSpeedH speedPtr)
+{
 
   //////////
   // TIME //
   //////////
 
   // Final time of the simulation, the initial time being 0.
-  real FinalTime = 0.1;
+  double FinalTime = 0.1;
   // Time step.
-  real Delta_t = 0.0001;
+  double Delta_t = 0.0001;
 
   // Number of iterations.
   int NbIterations = int (FinalTime / Delta_t);
 
-
-  ///////////////////
-  // DOMAIN & MESH //
-  ///////////////////
-
-  // Choose the type of the mesh:
-  //   1) COrthogonalMesh<real>
-  //   2) --
-  typedef COrthogonalMesh<real> MeshType;
-
-  // Domain bounds (the domain is a rectangle).
-  real Xmin = 0.0;
-  real Xmax = 3.0;
-  real Ymin = 0.0;
-  real Ymax = 3.0;
-
-  // For an orthogonal mesh, Nx and Ny are the number of
-  // grid points along (x'x) and (y'y) (respectively).
-  int Nx = 301;
-  int Ny = Nx;
-
-  // Choose the right constructor:
-  //   1) Mesh(Xmin, Xmax, Ymin, Ymax, Nx, Ny)
-  //   2) --
-  MeshType Mesh(Xmin, Xmax, Ymin, Ymax, Nx, Ny);
-
-
-  ////////////////////
-  // SPEED FUNCTION //
-  ////////////////////
-
-  // Choose the speed function:
-  //   1) CConstantSpeed<real>
-  //   2) CPiecewiseConstantSpeed<real>
-  //   3) CFireModel<real>
-  //   4) CSimplifiedFireModel<real>
-  typedef CSimplifiedFireModel<real> SpeedType;
-
-  // Speed rate for a constant speed function.
-  real SpeedRate = 0.5;
-
-  // Second speed rate for a piecewise-constant speed function.
-  real SpeedRate0 = 0.2;
-
-  // Limit (for a piecewise-constant speed function).
-  real Limit = 0.9;
-
-  // Parameters for both simplified and full fire model.
-  real U = 100.0;
-  real m = 1.5;
-  real c1 = 0.5;
-  real epsilon0 = 0.2;
-
-  // Last parameter for the simplified fire model.
-  real alpha = 0.9;
-
-  // Parameters for the full fire model.
-  real a = 0.1;
-  real b = 1.0;
-  real epsilon1 = 0.003;
-
-  // Choose the right constructor:
-  //   1) F(SpeedRate)
-  //   2) F(SpeedRate, SpeedRate0, Limit)
-  //   3) F(U, m, c1, epsilon0, a, b, epsilon1)
-  //   4) F(U, m, c1, epsilon0, alpha)
-  SpeedType F(U, m, c1, epsilon0, alpha);
+  MeshType Mesh(*static_cast<MeshType*>(meshPtr));
+  SpeedType F(*static_cast<SpeedType*>(speedPtr));
 
 
   ///////////////////
@@ -119,28 +56,28 @@ int my_main()
   ///////////////////
 
   // Choose the initial curve:
-  //   1) CCircle<real>
-  //   2) CTwoCircles<real>
-  //   3) CThreeCircles<real>
-  //   4) CIsland<real>
-  //   5) CIsland0<real>
-  //   6) CSetOfPoints<real>
-  typedef CCircle<real> InitialCurveType;
+  //   1) CCircle<double>
+  //   2) CTwoCircles<double>
+  //   3) CThreeCircles<double>
+  //   4) CIsland<double>
+  //   5) CIsland0<double>
+  //   6) CSetOfPoints<double>
+  typedef CCircle<double> InitialCurveType;
 
   // For a circle, center coordinates and radius.
-  real CircleCenterX = 1.0;
-  real CircleCenterY = 1.5;
-  real CircleRadius = 0.5;
+  double CircleCenterX = 1.0;
+  double CircleCenterY = 1.5;
+  double CircleRadius = 0.5;
 
   // For a second circle, center coordinates and radius.
-  real CircleCenterX0 = 1.65;
-  real CircleCenterY0 = 1.6;
-  real CircleRadius0 = 0.3;
+  double CircleCenterX0 = 1.65;
+  double CircleCenterY0 = 1.6;
+  double CircleRadius0 = 0.3;
 
   // For a third circle, center coordinates and radius.
-  real CircleCenterX1 = 0.50;
-  real CircleCenterY1 = 1.0;
-  real CircleRadius1 = 0.25;
+  double CircleCenterX1 = 0.50;
+  double CircleCenterY1 = 1.0;
+  double CircleRadius1 = 0.25;
 
   // File containing a front defined by a set of points.
   string InitialFrontFile = "[full path]/[set].pts";
@@ -169,9 +106,9 @@ int my_main()
   ////////////////////////
 
   // Choose the level set function type:
-  //   1) COrthogonalLevelSet<real>
+  //   1) COrthogonalLevelSet<double>
   //   2) --
-  typedef COrthogonalLevelSet<real> LevelSetType;
+  typedef COrthogonalLevelSet<double> LevelSetType;
 
   // Choose the right constructor:
   //   1) Phi
@@ -184,12 +121,12 @@ int my_main()
   /////////////////
 
   // Choose an initializer:
-  //   1) CNarrowBandNeverInit<real> *
-  //   2) CNarrowBandExtension<real> *
-  //   3) CFastMarchingNeverInit<real> **
+  //   1) CNarrowBandNeverInit<double> *
+  //   2) CNarrowBandExtension<double> *
+  //   3) CFastMarchingNeverInit<double> **
   //         * Narrow band level set method
   //        ** Fast marching method
-  typedef CNarrowBandNeverInit<real> InitializerType;
+  typedef CNarrowBandNeverInit<double> InitializerType;
 
   InitializerType Initializer;
 
@@ -199,13 +136,13 @@ int my_main()
   /////////////
 
   // Choose an initializer:
-  //   1) CNarrowBandFirstOrderEngquistOsher<real> *
-  //   2) CNarrowBandFirstOrderLaxFriedrichs<real> *
-  //   3) CNarrowBandEno2EngquistOsher<real> *
-  //   4) CFastMarchingFirstOrderEngquistOsher<real> **
+  //   1) CNarrowBandFirstOrderEngquistOsher<double> *
+  //   2) CNarrowBandFirstOrderLaxFriedrichs<double> *
+  //   3) CNarrowBandEno2EngquistOsher<double> *
+  //   4) CFastMarchingFirstOrderEngquistOsher<double> **
   //         * Narrow band level set method
   //        ** Fast marching method
-  typedef CNarrowBandFirstOrderEngquistOsher<real> UpdaterType;
+  typedef CNarrowBandFirstOrderEngquistOsher<double> UpdaterType;
 
   // Choose the right constructor and choose its parameters:
   //   1, 2, 3) Updater(TubeSemiWidth, BarrierWidth, OutSpaceWidth)
@@ -225,18 +162,18 @@ int my_main()
   ///////////
 
   // Choose the saver type:
-  //   1) CNeverSave<real>
+  //   1) CNeverSave<double>
   //        | Nothing is saved.
-  //   2) CCurvesSaver<real>
+  //   2) CCurvesSaver<double>
   //        | The front is constructed and saved at each time step.
   //        | Not relevant for the fast marching method.
-  //   3) CSaveLastCurve<real>
+  //   3) CSaveLastCurve<double>
   //        | Saves the last curve, after all calculations.
   //        | Not relevant for the fast marching method.
-  //   4) CSaveAtTheEnd<real>
+  //   4) CSaveAtTheEnd<double>
   //        | Saves the level set, after all calculations.
   //        | Relevant for the fast marching method.
-  typedef CCurvesSaver<real> SaverType;
+  typedef CCurvesSaver<double> SaverType;
 
   // Number of curves that will be saved.
   // Set NbCurves to 0 in order to save all curves.
@@ -283,7 +220,7 @@ int my_main()
   /////////////////////
   /////////////////////
 
-  CSimulator<real, MeshType, SpeedType, InitialCurveType,
+  CSimulator<double, MeshType, SpeedType, InitialCurveType,
     LevelSetType, InitializerType, UpdaterType, SaverType>
     Simulator(Mesh, F, InitialCurve, Phi,
 	      Initializer, Updater, Saver,
@@ -302,10 +239,4 @@ int my_main()
   ////////////////
 
   Simulator.Run();
-
-  // To catch exceptions.
-  END;
-
-  return 0;
-
 }
