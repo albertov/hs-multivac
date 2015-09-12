@@ -1,6 +1,8 @@
 #ifndef CBITS_H
 #define CBITS_H
 
+#include "hserror.hpp"
+
 #ifdef __cplusplus
 /*
  * Internal CPP types
@@ -60,7 +62,12 @@ typedef enum {MVO_TRIGONOMETRIC=0, MVO_REVERSE=1} MVOrientation;
 
 
 typedef void *MVFrontH;
+
 MVFrontH MVNewFront (int numPoints, MVOrientation orientation, MVPoint *points);
+
+MVPoint *
+MVGetFrontPoints (MVFrontH front, int *numPoints, MVOrientation *orientation);
+
 void MVDestroyFront(MVFrontH);
 
 // Simulate

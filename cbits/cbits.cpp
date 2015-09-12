@@ -45,6 +45,27 @@ MVNewFront (int numPoints, MVOrientation orientation, MVPoint *points)
   return static_cast<MVFrontH>(front);
 }
 
+MVPoint *
+MVGetFrontPoints (MVFrontH frontH, int *numPoints, MVOrientation *orientation)
+{
+  MVPoint *points = NULL;
+  CurveType *front = static_cast<CurveType*>(frontH);
+  *orientation = static_cast<MVOrientation>(front->GetOrientation());
+  int n = *numPoints = front->GetNbPoints();
+  if (n>0) {
+    List<Vector<double> > &list = front->GetPoints();
+    points = static_cast<MVPoint*>(malloc(n * sizeof(MVPoint)));
+    list.GoToTheHead();
+    for (int i=0; i<n; i++) {
+      Vector<double> p = list.GetCurrentValue();
+      points[i].x = p(0);
+      points[i].y = p(1);
+      list.GoToNext_StopAtTheTail();
+    }
+  }
+  return points;
+};
+
 void MVDestroyFront(MVFrontH frontH)
 {
   CurveType *front = static_cast<CurveType*>(frontH);

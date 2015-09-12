@@ -2,12 +2,18 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 module Multivac (
     Simulation (..)
-  , Status (..)
-  , Speed (..)
-  , Mesh (..)
-  , Front
-  , newFront
   , simulate
+
+  , Status (..)
+
+  , Speed (..)
+
+  , Mesh (..)
+
+  , Front
+  , mkFront
+  , frontToVector
+  , throwError
 
   , FastMarchSpeedFunc
   , NarrowBandSpeedFunc
@@ -15,11 +21,16 @@ module Multivac (
 ) where
 
 import Control.Applicative ((<$>), (<*>))
-import Control.Monad ((>=>))
+import Control.Monad ((>=>), (<=<))
+import Control.Exception (Exception(toException))
 import Foreign.C.Types
 import Foreign.Marshal.Utils
+import Foreign.Marshal.Alloc (alloca)
 import Foreign.Ptr
+import Foreign.StablePtr
+import Foreign.Storable
 import Foreign.ForeignPtr
+import System.IO.Unsafe (unsafePerformIO)
 
 import qualified Data.Vector.Storable as St
 
@@ -71,7 +82,7 @@ simulate Simulation{simMesh=Mesh{..}, simSpeed=Speed{..},..} = do
   r <- c_Simulate mesh speed simNumIterations simFinalTime
   return (if r==0 then Success else Error)
   where
-    initializeMesh = newMesh meshMinX meshMinY meshMaxX meshMaxY meshNX meshNY
+    initializeMesh = newMesh meshMinX meshMaxX meshMinY meshMaxY meshNX meshNY
     initializeSpeed = do
       fm    <- wrapFastMarchSpeedFunc speedFastMarch
       nb    <- wrapNarrowBandSpeedFunc speedNarrowBand
@@ -81,9 +92,18 @@ simulate Simulation{simMesh=Mesh{..}, simSpeed=Speed{..},..} = do
                speedDepPosition speedDepTime speedDepNormal speedDepCurvature
 
 
-newFront :: Orientation -> St.Vector Point -> IO Front
-newFront orientation v
-  = St.unsafeWith v (c_newFront (St.length v) orientation . castPtr)
+mkFront :: Orientation -> St.Vector Point -> Front
+mkFront orientation v = unsafePerformIO $
+  St.unsafeWith v (c_newFront (St.length v) orientation . castPtr)
+
+frontToVector :: Front -> IO (Orientation, St.Vector Point)
+frontToVector f = do
+  (ptr, size, orientation) <- getFrontPoints f
+  fp <- newForeignPtr c_free (castPtr ptr)
+  return (orientation, St.unsafeFromForeignPtr0 fp size)
+
+throwError :: Exception e => e -> IO ()
+throwError = (c_throwError . castStablePtrToPtr <=< newStablePtr) . toException
 
 --
 -- Low level bindings
@@ -106,6 +126,9 @@ foreign import ccall "wrapper"
 foreign import ccall "wrapper"
   wrapMaxFSpeedFunc :: MaxFSpeedFunc-> IO CMaxFSpeedFunc
 
+{#fun ThrowError as c_throwError {
+    `Ptr ()' }  -> `()' #}
+
 {#pointer FrontH as Front foreign finalizer DestroyFront as ^ newtype#}
 
 {#enum Orientation {} with prefix = "MVO_" deriving (Eq,Bounded,Show) #}
@@ -115,6 +138,18 @@ foreign import ccall "wrapper"
   , `Orientation'
   , `Ptr ()'
   } -> `Front' #}
+
+{#fun GetFrontPoints as ^ {
+    `Front'
+  , alloca- `Int' peekInt*
+  , alloca- `Orientation' peekEnum*
+  } -> `Ptr ()' #}
+
+peekInt :: Ptr CInt -> IO Int
+peekInt = fmap fromIntegral . peek
+
+peekEnum :: Ptr CInt -> IO Orientation
+peekEnum = fmap (toEnum . fromIntegral) . peek
 
 
 {#pointer MeshH foreign finalizer DestroyMesh as ^ newtype#}
@@ -148,3 +183,7 @@ foreign import ccall "wrapper"
   , `Int'
   , `Double'
   } -> `Int' #}
+
+foreign import ccall "stdlib.h &free"
+  c_free :: FunPtr (Ptr a -> IO ())
+

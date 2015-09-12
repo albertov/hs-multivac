@@ -41,7 +41,6 @@ namespace HsMultivac
 				      T nx, T ny, T curvature) const
   {
     return (*m_cb.narrowBandSpeed)(x, y, time, nx, ny, curvature);
-
   }
 
   template <class T>
