@@ -31,6 +31,26 @@ void MVDestroySpeed(MVSpeedH speedH)
   delete speed;
 }
 
+MVFrontH
+MVNewFront (int numPoints, MVOrientation orientation, MVPoint *points)
+{
+  CurveType *front = new CurveType();
+  front->SetOrientation(orientation);
+  Vector<double> p(2);
+  for (int i=0; i<numPoints; i++) {
+    p(0) = points[i].x;
+    p(1) = points[i].y;
+    front->AddPoint(p);
+  }
+  return static_cast<MVFrontH>(front);
+}
+
+void MVDestroyFront(MVFrontH frontH)
+{
+  CurveType *front = static_cast<CurveType*>(frontH);
+  delete front;
+}
+
 
 int Simulate( MVMeshH meshPtr, MVSpeedH speedPtr, int NbIterations
              , double FinalTime)

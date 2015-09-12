@@ -2,8 +2,11 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
 module Multivac (
     Simulation (..)
+  , Status (..)
   , Speed (..)
   , Mesh (..)
+  , Front
+  , newFront
   , simulate
 
   , FastMarchSpeedFunc
@@ -18,12 +21,17 @@ import Foreign.Marshal.Utils
 import Foreign.Ptr
 import Foreign.ForeignPtr
 
+import qualified Data.Vector.Storable as St
+
+import Point (Point(..))
+
 data Simulation = Simulation {
     simMesh          :: Mesh
   , simSpeed         :: Speed
   , simNumIterations :: Int
   , simFinalTime     :: Double
 }
+
 
 data Mesh = Mesh {
     meshMinX :: Double
@@ -52,21 +60,16 @@ type MaxFSpeedFunc       =  Double -> Double -> Double ->
                             Double -> Double -> IO Double
 
 
+data Status = Success
+            | Error
+  deriving (Eq, Show, Bounded, Enum)
 
---
--- Low level bindings
---
-
-
-#include "cbits.h"
-{#context prefix = "MV" #}
-
-simulate :: Simulation -> IO Bool
+simulate :: Simulation -> IO Status
 simulate Simulation{simMesh=Mesh{..}, simSpeed=Speed{..},..} = do
   speed <- initializeSpeed
   mesh  <- initializeMesh
   r <- c_Simulate mesh speed simNumIterations simFinalTime
-  return (if r==0 then True else False)
+  return (if r==0 then Success else Error)
   where
     initializeMesh = newMesh meshMinX meshMinY meshMaxX meshMaxY meshNX meshNY
     initializeSpeed = do
@@ -77,6 +80,18 @@ simulate Simulation{simMesh=Mesh{..}, simSpeed=Speed{..},..} = do
       newSpeed fm nb maxF1 maxF2
                speedDepPosition speedDepTime speedDepNormal speedDepCurvature
 
+
+newFront :: Orientation -> St.Vector Point -> IO Front
+newFront orientation v
+  = St.unsafeWith v (c_newFront (St.length v) orientation . castPtr)
+
+--
+-- Low level bindings
+--
+
+
+#include "cbits.h"
+{#context prefix = "MV" #}
 
 {#pointer FastMarchSpeedFunc as CFastMarchSpeedFunc #}
 {#pointer NarrowBandSpeedFunc as CNarrowBandSpeedFunc #}
@@ -90,6 +105,17 @@ foreign import ccall "wrapper"
 
 foreign import ccall "wrapper"
   wrapMaxFSpeedFunc :: MaxFSpeedFunc-> IO CMaxFSpeedFunc
+
+{#pointer FrontH as Front foreign finalizer DestroyFront as ^ newtype#}
+
+{#enum Orientation {} with prefix = "MVO_" deriving (Eq,Bounded,Show) #}
+
+{#fun NewFront as c_newFront {
+    `Int'
+  , `Orientation'
+  , `Ptr ()'
+  } -> `Front' #}
+
 
 {#pointer MeshH foreign finalizer DestroyMesh as ^ newtype#}
 

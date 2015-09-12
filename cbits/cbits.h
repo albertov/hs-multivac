@@ -13,8 +13,11 @@
 using namespace Multivac;
 using namespace HsMultivac;
 
-typedef COrthogonalMesh<double> MeshType;
-typedef CSpeedCallback<double> SpeedType;
+namespace HsMultivac {
+  typedef COrthogonalMesh<double> MeshType;
+  typedef CSpeedCallback<double> SpeedType;
+  typedef Curve<double> CurveType;
+}
 
 extern "C" {
 #endif // __cplusplus
@@ -36,7 +39,7 @@ void MVDestroyMesh(MVMeshH);
 
 
 // MVSpeedH
-//
+
 typedef void *MVSpeedH;
 
 MVSpeedH
@@ -45,6 +48,22 @@ MVNewSpeed ( FastMarchSpeedFunc fm, NarrowBandSpeedFunc nb
            , int depPos, int depTime, int depNormal, int depCurv);
 
 void MVDestroySpeed(MVSpeedH);
+
+// MVFrontH
+
+typedef struct {
+  double x;
+  double y;
+} MVPoint;
+
+typedef enum {MVO_TRIGONOMETRIC=0, MVO_REVERSE=1} MVOrientation;
+
+
+typedef void *MVFrontH;
+MVFrontH MVNewFront (int numPoints, MVOrientation orientation, MVPoint *points);
+void MVDestroyFront(MVFrontH);
+
+// Simulate
 
 int Simulate( MVMeshH meshPtr, MVSpeedH speedPtr, int NbIterations
             , double FinalTime);
