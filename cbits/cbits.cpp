@@ -32,20 +32,10 @@ void MVDestroySpeed(MVSpeedH speedH)
 }
 
 
-void Simulate(MVMeshH meshPtr, MVSpeedH speedPtr)
+int Simulate( MVMeshH meshPtr, MVSpeedH speedPtr, int NbIterations
+             , double FinalTime)
 {
-
-  //////////
-  // TIME //
-  //////////
-
-  // Final time of the simulation, the initial time being 0.
-  double FinalTime = 0.1;
-  // Time step.
-  double Delta_t = 0.0001;
-
-  // Number of iterations.
-  int NbIterations = int (FinalTime / Delta_t);
+  TRY;
 
   MeshType Mesh(*static_cast<MeshType*>(meshPtr));
   SpeedType F(*static_cast<SpeedType*>(speedPtr));
@@ -239,4 +229,7 @@ void Simulate(MVMeshH meshPtr, MVSpeedH speedPtr)
   ////////////////
 
   Simulator.Run();
+
+  END;
+  return 0;
 }

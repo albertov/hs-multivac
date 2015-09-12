@@ -1,15 +1,14 @@
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
 module Multivac (
-    Mesh
-  , newMesh
+    Simulation (..)
+  , Speed (..)
+  , Mesh (..)
+  , simulate
 
   , FastMarchSpeedFunc
   , NarrowBandSpeedFunc
   , MaxFSpeedFunc
-  , Speed
-  , newSpeed
-
-  , simulate
 ) where
 
 import Control.Applicative ((<$>), (<*>))
@@ -19,14 +18,65 @@ import Foreign.Marshal.Utils
 import Foreign.Ptr
 import Foreign.ForeignPtr
 
-#include "cbits.h"
-{#context prefix = "MV" #}
+data Simulation = Simulation {
+    simMesh          :: Mesh
+  , simSpeed         :: Speed
+  , simNumIterations :: Int
+  , simFinalTime     :: Double
+}
+
+data Mesh = Mesh {
+    meshMinX :: Double
+  , meshMinY :: Double
+  , meshMaxX :: Double
+  , meshMaxY :: Double
+  , meshNX   :: Double
+  , meshNY   :: Double
+  } deriving (Show)
+
+data Speed = Speed {
+    speedFastMarch    :: FastMarchSpeedFunc
+  , speedNarrowBand   :: NarrowBandSpeedFunc
+  , speedMaxF1        :: MaxFSpeedFunc
+  , speedMaxF2        :: MaxFSpeedFunc
+  , speedDepPosition  :: Bool
+  , speedDepTime      :: Bool
+  , speedDepNormal    :: Bool
+  , speedDepCurvature :: Bool
+  }
 
 type FastMarchSpeedFunc  =  Double -> Double -> Double -> IO Double
 type NarrowBandSpeedFunc =  Double -> Double -> Double ->
                             Double -> Double -> Double -> IO Double
 type MaxFSpeedFunc       =  Double -> Double -> Double ->
                             Double -> Double -> IO Double
+
+
+
+--
+-- Low level bindings
+--
+
+
+#include "cbits.h"
+{#context prefix = "MV" #}
+
+simulate :: Simulation -> IO Bool
+simulate Simulation{simMesh=Mesh{..}, simSpeed=Speed{..},..} = do
+  speed <- initializeSpeed
+  mesh  <- initializeMesh
+  r <- c_Simulate mesh speed simNumIterations simFinalTime
+  return (if r==0 then True else False)
+  where
+    initializeMesh = newMesh meshMinX meshMinY meshMaxX meshMaxY meshNX meshNY
+    initializeSpeed = do
+      fm    <- wrapFastMarchSpeedFunc speedFastMarch
+      nb    <- wrapNarrowBandSpeedFunc speedNarrowBand
+      maxF1 <- wrapMaxFSpeedFunc speedMaxF1
+      maxF2 <- wrapMaxFSpeedFunc speedMaxF1
+      newSpeed fm nb maxF1 maxF2
+               speedDepPosition speedDepTime speedDepNormal speedDepCurvature
+
 
 {#pointer FastMarchSpeedFunc as CFastMarchSpeedFunc #}
 {#pointer NarrowBandSpeedFunc as CNarrowBandSpeedFunc #}
@@ -41,20 +91,20 @@ foreign import ccall "wrapper"
 foreign import ccall "wrapper"
   wrapMaxFSpeedFunc :: MaxFSpeedFunc-> IO CMaxFSpeedFunc
 
-{#pointer MeshH as Mesh foreign finalizer DestroyMesh as ^ newtype#}
+{#pointer MeshH foreign finalizer DestroyMesh as ^ newtype#}
 
 {#fun NewMesh as ^ {
-    `Double'  -- | Xmin
+    `Double'
   , `Double'
   , `Double'
   , `Double'
   , `Double'
   , `Double'
-  } -> `Mesh' #}
+  } -> `MeshH' #}
 
-{#pointer SpeedH as Speed foreign finalizer DestroySpeed as ^ newtype#}
+{#pointer SpeedH foreign finalizer DestroySpeed as ^ newtype#}
 
-{#fun NewSpeed as c_NewSpeed {
+{#fun NewSpeed as ^ {
     `CFastMarchSpeedFunc'
   , `CNarrowBandSpeedFunc'
   , `CMaxFSpeedFunc'
@@ -63,16 +113,12 @@ foreign import ccall "wrapper"
   , `Bool'
   , `Bool'
   , `Bool'
-  } -> `Speed' #}
+  } -> `SpeedH' #}
 
-newSpeed
-  :: FastMarchSpeedFunc -> NarrowBandSpeedFunc
-  -> MaxFSpeedFunc -> MaxFSpeedFunc -> Bool -> Bool -> Bool -> Bool -> IO Speed
-newSpeed fm nb maxF1 maxF2 depPos depTime depNormal depCurv = do
-  fm'     <- wrapFastMarchSpeedFunc fm
-  nb'     <- wrapNarrowBandSpeedFunc nb
-  maxF1'  <- wrapMaxFSpeedFunc maxF1
-  maxF2'  <- wrapMaxFSpeedFunc maxF2
-  c_NewSpeed fm' nb' maxF1'  maxF2' depPos depTime depNormal depCurv
 
-{#fun Simulate as ^ {`Mesh', `Speed'} -> `()' #}
+{#fun Simulate as c_Simulate {
+    `MeshH'
+  , `SpeedH'
+  , `Int'
+  , `Double'
+  } -> `Int' #}

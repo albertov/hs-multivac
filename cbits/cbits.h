@@ -46,7 +46,8 @@ MVNewSpeed ( FastMarchSpeedFunc fm, NarrowBandSpeedFunc nb
 
 void MVDestroySpeed(MVSpeedH);
 
-void Simulate(MVMeshH meshPtr, MVSpeedH speedPtr);
+int Simulate( MVMeshH meshPtr, MVSpeedH speedPtr, int NbIterations
+            , double FinalTime);
 
 
 #ifdef __cplusplus
