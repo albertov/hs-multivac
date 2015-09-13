@@ -1,5 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ForeignFunctionInterface #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Multivac (
     Simulation (..)
   , simulate
@@ -13,7 +14,6 @@ module Multivac (
   , Front
   , mkFront
   , frontToVector
-  , throwError
 
   , FastMarchSpeedFunc
   , NarrowBandSpeedFunc
@@ -22,7 +22,7 @@ module Multivac (
 
 import Control.Applicative ((<$>), (<*>))
 import Control.Monad ((>=>), (<=<))
-import Control.Exception (Exception(toException), SomeException, throw)
+import Control.Exception (Exception(toException), SomeException, throw, try)
 import Data.IORef
 import Foreign.C.Types
 import Foreign.Marshal.Utils
@@ -65,12 +65,50 @@ data Speed = Speed {
   , speedDepCurvature :: Bool
   }
 
-type FastMarchSpeedFunc  =  Double -> Double -> Double -> IO Double
-type NarrowBandSpeedFunc =  Double -> Double -> Double ->
-                            Double -> Double -> Double -> IO Double
+
+--
+-- FastMarchSpeedFunc wrapping
+--
+type FastMarchSpeedFunc   =  Double -> Double -> Double -> IO Double
+type FastMarchSpeedFunc'  =  Double -> Double -> Double -> Ptr CDouble
+                          -> IO (Ptr ())
+
+wrapFastMarchSpeedFunc :: FastMarchSpeedFunc -> IO CFastMarchSpeedFunc
+wrapFastMarchSpeedFunc f =
+  c_wrapFastMarchSpeedFunc $ \a1 a2 a3 ->
+    wrapErrorFunc (f a1 a2 a3) . castPtr
+
+foreign import ccall "wrapper"
+  c_wrapFastMarchSpeedFunc :: FastMarchSpeedFunc' -> IO CFastMarchSpeedFunc
+
+
+--
+-- NarrowBandSpeedFunc wrapping
+--
+type NarrowBandSpeedFunc  = Double -> Double -> Double -> Double -> Double ->
+                            Double -> IO Double
+type NarrowBandSpeedFunc' = Double -> Double -> Double -> Double -> Double ->
+                            Double -> Ptr CDouble -> IO (Ptr ())
+
+wrapErrorFunc :: forall a. Storable a => IO a -> Ptr a -> IO (Ptr ())
+wrapErrorFunc act ptr = do
+    res <- try act :: IO (Either SomeException a)
+    case res of
+      Right v -> poke ptr v >> return nullPtr
+      Left  e -> fmap castStablePtrToPtr (newStablePtr e)
+{-# INLINE wrapErrorFunc #-}
+  
+wrapNarrowBandSpeedFunc :: NarrowBandSpeedFunc -> IO CNarrowBandSpeedFunc
+wrapNarrowBandSpeedFunc f =
+  c_wrapNarrowBandSpeedFunc $ \a1 a2 a3 a4 a5 a6 ->
+    wrapErrorFunc (f a1 a2 a3 a4 a5 a6) . castPtr
+
+foreign import ccall "wrapper"
+  c_wrapNarrowBandSpeedFunc :: NarrowBandSpeedFunc' -> IO CNarrowBandSpeedFunc
+
+
 type MaxFSpeedFunc       =  Double -> Double -> Double ->
                             Double -> Double -> IO Double
-
 
 data Status = Success
             | Error
@@ -80,7 +118,7 @@ simulate :: Simulation -> IO Status
 simulate Simulation{simMesh=Mesh{..}, simSpeed=Speed{..},..} = do
   speed <- initializeSpeed
   mesh  <- initializeMesh
-  r <- catchAndRethrow (c_Simulate mesh speed simNumIterations simFinalTime)
+  r <- c_Simulate mesh speed simNumIterations simFinalTime
   return (if r==0 then Success else Error)
   where
     initializeMesh = newMesh meshMinX meshMaxX meshMinY meshMaxY meshNX meshNY
@@ -103,24 +141,6 @@ frontToVector f = do
   fp <- newForeignPtr c_free (castPtr ptr)
   return (orientation, St.unsafeFromForeignPtr0 fp size)
 
-throwError :: Exception e => e -> IO ()
-throwError = (c_throwError . castStablePtrToPtr <=< newStablePtr) . toException
-
-catchAndRethrow :: IO a -> IO a
-catchAndRethrow a = do
-  result <- newIORef undefined
-  ePtr <- c_catchError =<< wrapIOAction (a >>= writeIORef result)
-  if ePtr /= nullPtr
-    then do
-      let sPtr = castPtrToStablePtr ePtr :: StablePtr SomeException
-      exc <- deRefStablePtr sPtr
-      freeStablePtr sPtr
-      throw exc
-    else
-     readIORef result
-
-
-
 --
 -- Low level bindings
 --
@@ -130,27 +150,12 @@ catchAndRethrow a = do
 {#context prefix = "MV" #}
 
 {#pointer FastMarchSpeedFunc as CFastMarchSpeedFunc #}
-{#pointer MVAction #}
 {#pointer NarrowBandSpeedFunc as CNarrowBandSpeedFunc #}
 {#pointer MaxFSpeedFunc as CMaxFSpeedFunc #}
 
-foreign import ccall "wrapper"
-  wrapIOAction :: IO () -> IO MVAction
-
-foreign import ccall "wrapper"
-  wrapFastMarchSpeedFunc :: FastMarchSpeedFunc-> IO CFastMarchSpeedFunc
-
-foreign import ccall "wrapper"
-  wrapNarrowBandSpeedFunc :: NarrowBandSpeedFunc-> IO CNarrowBandSpeedFunc
 
 foreign import ccall "wrapper"
   wrapMaxFSpeedFunc :: MaxFSpeedFunc-> IO CMaxFSpeedFunc
-
-{#fun CatchError as c_catchError {
-    `MVAction' }  -> `Ptr ()' #}
-
-{#fun ThrowError as c_throwError {
-    `Ptr ()' }  -> `()' #}
 
 {#pointer FrontH as Front foreign finalizer DestroyFront as ^ newtype#}
 

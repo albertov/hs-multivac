@@ -32,15 +32,20 @@ namespace HsMultivac
   template <class T>
   inline T CSpeedCallback<T>::operator() (T x, T y, T time) const
   {
-    return (*m_cb.fastMarchSpeed)(x, y, time);
+    T ret;
+    CHECK_HS_ERROR ((*m_cb.fastMarchSpeed)(x, y, time, &ret));
+    return ret;
+    
   }
 
 
   template <class T>
   inline T CSpeedCallback<T>::operator() (T x, T y, T time,
-				      T nx, T ny, T curvature) const
+				      T nx, T ny, T curv) const
   {
-    return (*m_cb.narrowBandSpeed)(x, y, time, nx, ny, curvature);
+    T ret;
+    CHECK_HS_ERROR ((*m_cb.narrowBandSpeed)(x, y, time, nx, ny, curv, &ret));
+    return ret;
   }
 
   template <class T>
@@ -48,7 +53,10 @@ namespace HsMultivac
 				   T DyMin, T DyMax,
 				   T norm2) const
   {
-    return (*m_cb.maxF1)(DxMin, DxMax, DyMin, DyMax, norm2);
+    //T ret;
+    //CHECK_HS_ERROR ((*m_cb.maxF1)(DxMin, DxMax, DyMin, DyMax, norm2, *ret));
+    //return ret;
+    return 0;
   }
 
 
@@ -57,7 +65,10 @@ namespace HsMultivac
 				   T DyMin, T DyMax,
 				   T norm2) const
   {
-    return (*m_cb.maxF2)(DxMin, DxMax, DyMin, DyMax, norm2);
+    //T ret;
+    //CHECK_HS_ERROR ((*m_cb.maxF2)(DxMin, DxMax, DyMin, DyMax, norm2, *ret));
+    //return ret;
+    return 0;
   }
 
   template <class T>

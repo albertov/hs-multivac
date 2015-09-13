@@ -1,8 +1,6 @@
 #ifndef CBITS_H
 #define CBITS_H
 
-#include "hserror.hpp"
-
 #ifdef __cplusplus
 /*
  * Internal CPP types

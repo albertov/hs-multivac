@@ -1,15 +1,21 @@
 #ifndef SPEEDCALLBACK_HPP
 #define SPEEDCALLBACK_HPP
 
+#include "hserror.hxx"
+
 #ifdef __cplusplus
+
+#include <cstdio>
+#include "errors.cxx"
+
 extern "C" {
 #endif
 
 /*
  * C interface
  */
-typedef double (*FastMarchSpeedFunc)(double, double, double);
-typedef double (*NarrowBandSpeedFunc)(double, double, double, double, double, double);
+typedef HsStablePtr (*FastMarchSpeedFunc)(double, double, double, double*);
+typedef HsStablePtr (*NarrowBandSpeedFunc)(double, double, double, double, double, double, double*);
 typedef double (*MaxFSpeedFunc)(double, double, double, double, double);
 
 typedef struct SpeedFuncCallbacks {
@@ -25,9 +31,6 @@ typedef struct SpeedFuncCallbacks {
 
 #ifdef __cplusplus
 }
-
-#include <cstdio>
-#include "errors.cxx"
 
 
 using namespace Multivac;
