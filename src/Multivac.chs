@@ -5,8 +5,6 @@ module Multivac (
     Simulation (..)
   , simulate
 
-  , Status (..)
-
   , Speed (..)
 
   , Mesh (..)
@@ -23,8 +21,9 @@ module Multivac (
 import Control.Applicative ((<$>), (<*>))
 import Control.Monad ((>=>), (<=<))
 import Control.Exception (Exception(toException), SomeException, throw, try)
-import Data.IORef
+import Data.Typeable
 import Foreign.C.Types
+import Foreign.C.String
 import Foreign.Marshal.Utils
 import Foreign.Marshal.Alloc (alloca)
 import Foreign.Ptr
@@ -65,22 +64,19 @@ data Speed = Speed {
   , speedDepCurvature :: Bool
   }
 
+type ExceptionPtr = StablePtr SomeException
 
 --
 -- FastMarchSpeedFunc wrapping
 --
 type FastMarchSpeedFunc   =  Double -> Double -> Double -> IO Double
 type FastMarchSpeedFunc'  =  Double -> Double -> Double -> Ptr CDouble
-                          -> IO (Ptr ())
+                          -> IO ExceptionPtr
 
 wrapFastMarchSpeedFunc :: FastMarchSpeedFunc -> IO CFastMarchSpeedFunc
 wrapFastMarchSpeedFunc f =
   c_wrapFastMarchSpeedFunc $ \a1 a2 a3 ->
     wrapErrorFunc (f a1 a2 a3) . castPtr
-
-foreign import ccall "wrapper"
-  c_wrapFastMarchSpeedFunc :: FastMarchSpeedFunc' -> IO CFastMarchSpeedFunc
-
 
 --
 -- NarrowBandSpeedFunc wrapping
@@ -88,38 +84,34 @@ foreign import ccall "wrapper"
 type NarrowBandSpeedFunc  = Double -> Double -> Double -> Double -> Double ->
                             Double -> IO Double
 type NarrowBandSpeedFunc' = Double -> Double -> Double -> Double -> Double ->
-                            Double -> Ptr CDouble -> IO (Ptr ())
+                            Double -> Ptr CDouble -> IO ExceptionPtr
 
-wrapErrorFunc :: forall a. Storable a => IO a -> Ptr a -> IO (Ptr ())
-wrapErrorFunc act ptr = do
-    res <- try act :: IO (Either SomeException a)
-    case res of
-      Right v -> poke ptr v >> return nullPtr
-      Left  e -> fmap castStablePtrToPtr (newStablePtr e)
-{-# INLINE wrapErrorFunc #-}
   
 wrapNarrowBandSpeedFunc :: NarrowBandSpeedFunc -> IO CNarrowBandSpeedFunc
 wrapNarrowBandSpeedFunc f =
   c_wrapNarrowBandSpeedFunc $ \a1 a2 a3 a4 a5 a6 ->
     wrapErrorFunc (f a1 a2 a3 a4 a5 a6) . castPtr
 
-foreign import ccall "wrapper"
-  c_wrapNarrowBandSpeedFunc :: NarrowBandSpeedFunc' -> IO CNarrowBandSpeedFunc
 
+--
+-- MaxSpeedFunc wrapping
+--
 
-type MaxFSpeedFunc       =  Double -> Double -> Double ->
-                            Double -> Double -> IO Double
+type MaxFSpeedFunc  =  Double -> Double -> Double -> Double -> Double ->
+                       IO Double
+type MaxFSpeedFunc' =  Double -> Double -> Double -> Double -> Double ->
+                       Ptr CDouble -> IO ExceptionPtr
 
-data Status = Success
-            | Error
-  deriving (Eq, Show, Bounded, Enum)
+wrapMaxFSpeedFunc :: MaxFSpeedFunc -> IO CMaxFSpeedFunc
+wrapMaxFSpeedFunc f =
+  c_wrapMaxFSpeedFunc $ \a1 a2 a3 a4 a5 ->
+    wrapErrorFunc (f a1 a2 a3 a4 a5) . castPtr
 
-simulate :: Simulation -> IO Status
+simulate :: Simulation -> IO ()
 simulate Simulation{simMesh=Mesh{..}, simSpeed=Speed{..},..} = do
   speed <- initializeSpeed
   mesh  <- initializeMesh
-  r <- c_Simulate mesh speed simNumIterations simFinalTime
-  return (if r==0 then Success else Error)
+  c_Simulate mesh speed simNumIterations simFinalTime
   where
     initializeMesh = newMesh meshMinX meshMaxX meshMinY meshMaxY meshNX meshNY
     initializeSpeed = do
@@ -141,6 +133,43 @@ frontToVector f = do
   fp <- newForeignPtr c_free (castPtr ptr)
   return (orientation, St.unsafeFromForeignPtr0 fp size)
 
+
+
+--
+-- Error handling
+--
+
+data MultivacError = MultivacError String
+                   | CallbackError SomeException
+  deriving (Show, Typeable)
+
+instance Exception MultivacError
+
+foreign export ccall multivacError :: CString -> IO ExceptionPtr
+
+multivacError :: CString -> IO ExceptionPtr
+multivacError = peekCString >=> newStablePtr . toException . MultivacError
+
+wrapErrorFunc
+  :: forall a. Storable a
+  => IO a -> Ptr a -> IO ExceptionPtr
+wrapErrorFunc act ptr = do
+    res <- try act
+    case res of
+      Right v -> poke ptr v >> return nullExceptionPtr
+      Left  e -> newStablePtr e
+{-# INLINE wrapErrorFunc #-}
+
+nullExceptionPtr :: ExceptionPtr
+nullExceptionPtr = castPtrToStablePtr nullPtr
+
+checkHsException :: ExceptionPtr -> IO ()
+checkHsException ePtr
+  | ePtr == nullExceptionPtr = return ()
+  | otherwise                = do exc <- deRefStablePtr ePtr
+                                  freeStablePtr ePtr
+                                  throw (CallbackError exc)
+
 --
 -- Low level bindings
 --
@@ -149,13 +178,22 @@ frontToVector f = do
 #include "cbits.h"
 {#context prefix = "MV" #}
 
+{#pointer HsException as ExceptionPtr nocode #}
+
 {#pointer FastMarchSpeedFunc as CFastMarchSpeedFunc #}
 {#pointer NarrowBandSpeedFunc as CNarrowBandSpeedFunc #}
 {#pointer MaxFSpeedFunc as CMaxFSpeedFunc #}
 
+foreign import ccall "wrapper"
+  c_wrapMaxFSpeedFunc :: MaxFSpeedFunc' -> IO CMaxFSpeedFunc
 
 foreign import ccall "wrapper"
-  wrapMaxFSpeedFunc :: MaxFSpeedFunc-> IO CMaxFSpeedFunc
+  c_wrapFastMarchSpeedFunc :: FastMarchSpeedFunc' -> IO CFastMarchSpeedFunc
+
+foreign import ccall "wrapper"
+  c_wrapNarrowBandSpeedFunc :: NarrowBandSpeedFunc' -> IO CNarrowBandSpeedFunc
+
+
 
 {#pointer FrontH as Front foreign finalizer DestroyFront as ^ newtype#}
 
@@ -210,7 +248,7 @@ peekEnum = fmap (toEnum . fromIntegral) . peek
   , `SpeedH'
   , `Int'
   , `Double'
-  } -> `Int' #}
+  } -> `()' checkHsException* #}
 
 foreign import ccall "stdlib.h &free"
   c_free :: FunPtr (Ptr a -> IO ())

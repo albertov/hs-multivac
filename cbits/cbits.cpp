@@ -73,8 +73,8 @@ void MVDestroyFront(MVFrontH frontH)
 }
 
 
-int Simulate( MVMeshH meshPtr, MVSpeedH speedPtr, int NbIterations
-             , double FinalTime)
+HsException Simulate( MVMeshH meshPtr, MVSpeedH speedPtr, int NbIterations
+                    , double FinalTime)
 {
   TRY;
 
@@ -240,8 +240,8 @@ int Simulate( MVMeshH meshPtr, MVSpeedH speedPtr, int NbIterations
   int Period = NbIterations / (NbCurves==0?NbIterations:NbCurves);
 
   SaverType Saver(TimeFile, CurvesFile,
-		  CurveLengthsFile, PhiFile, FFile, XFile, YFile,
-		  PointsFile, EdgesFile, TrianglesFile, Period);
+      CurveLengthsFile, PhiFile, FFile, XFile, YFile,
+      PointsFile, EdgesFile, TrianglesFile, Period);
 
 
 
@@ -254,8 +254,8 @@ int Simulate( MVMeshH meshPtr, MVSpeedH speedPtr, int NbIterations
   CSimulator<double, MeshType, SpeedType, InitialCurveType,
     LevelSetType, InitializerType, UpdaterType, SaverType>
     Simulator(Mesh, F, InitialCurve, Phi,
-	      Initializer, Updater, Saver,
-	      NbIterations, FinalTime);
+        Initializer, Updater, Saver,
+        NbIterations, FinalTime);
 
 
   ////////////////////////////////
@@ -271,7 +271,6 @@ int Simulate( MVMeshH meshPtr, MVSpeedH speedPtr, int NbIterations
 
   Simulator.Run();
 
-  END;
-
+  CATCH;
   return 0;
 }

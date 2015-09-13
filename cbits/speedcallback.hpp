@@ -14,9 +14,9 @@ extern "C" {
 /*
  * C interface
  */
-typedef HsStablePtr (*FastMarchSpeedFunc)(double, double, double, double*);
-typedef HsStablePtr (*NarrowBandSpeedFunc)(double, double, double, double, double, double, double*);
-typedef double (*MaxFSpeedFunc)(double, double, double, double, double);
+typedef HsException (*FastMarchSpeedFunc)(double, double, double, double*);
+typedef HsException (*NarrowBandSpeedFunc)(double, double, double, double, double, double, double*);
+typedef HsException (*MaxFSpeedFunc)(double, double, double, double, double, double*);
 
 typedef struct SpeedFuncCallbacks {
   FastMarchSpeedFunc fastMarchSpeed; 

@@ -28,6 +28,8 @@ extern "C" {
  * Exported Types
  */
 
+HsException multivacError(const char* msg);
+
 // MVMeshH
 
 typedef void *MVMeshH;
@@ -70,8 +72,8 @@ void MVDestroyFront(MVFrontH);
 
 // Simulate
 
-int Simulate( MVMeshH meshPtr, MVSpeedH speedPtr, int NbIterations
-            , double FinalTime);
+HsException Simulate( MVMeshH meshPtr, MVSpeedH speedPtr, int NbIterations
+                    , double FinalTime);
 
 
 #ifdef __cplusplus

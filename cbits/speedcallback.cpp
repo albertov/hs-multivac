@@ -53,10 +53,9 @@ namespace HsMultivac
 				   T DyMin, T DyMax,
 				   T norm2) const
   {
-    //T ret;
-    //CHECK_HS_ERROR ((*m_cb.maxF1)(DxMin, DxMax, DyMin, DyMax, norm2, *ret));
-    //return ret;
-    return 0;
+    T ret;
+    CHECK_HS_ERROR ((*m_cb.maxF1)(DxMin, DxMax, DyMin, DyMax, norm2, &ret));
+    return ret;
   }
 
 
@@ -65,10 +64,9 @@ namespace HsMultivac
 				   T DyMin, T DyMax,
 				   T norm2) const
   {
-    //T ret;
-    //CHECK_HS_ERROR ((*m_cb.maxF2)(DxMin, DxMax, DyMin, DyMax, norm2, *ret));
-    //return ret;
-    return 0;
+    T ret;
+    CHECK_HS_ERROR ((*m_cb.maxF2)(DxMin, DxMax, DyMin, DyMax, norm2, &ret));
+    return ret;
   }
 
   template <class T>
