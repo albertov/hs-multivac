@@ -146,6 +146,7 @@ namespace Multivac
     List<Vector<T> >& Cpoints = C.GetPoints();
 
     points_.ClearAll();
+    SetOrientation(C.GetOrientation());
     Cpoints.GoToTheHead();
 
     if (!Cpoints.IsEmpty())

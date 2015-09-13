@@ -8,6 +8,7 @@
 
 #include "multivac.hxx"
 #include "speedcallback.cpp"
+#include "memorysaver.hxx"
 
 
 using namespace Multivac;
@@ -20,12 +21,22 @@ namespace HsMultivac {
   typedef CSetOfPoints<double> InitialCurveType;
   typedef COrthogonalLevelSet<double> LevelSetType;
   typedef CNarrowBandExtension<double> InitializerType;
+  typedef CNarrowBandFirstOrderEngquistOsher<double> UpdaterType;
+  typedef vector<CurveType> FrontArrayType;
+  typedef CMemorySaver<double> SaverType;
+  typedef CSimulator<double, MeshType, SpeedType, InitialCurveType,
+      LevelSetType, InitializerType, UpdaterType, SaverType> SimulatorType;
+
 }
 
 extern "C" {
 #endif // __cplusplus
 
 #include "speedcallback.hpp"
+
+#define MVO_UNKNOWN         (-1)
+#define MVO_TRIGONOMETRIC   (0)
+#define MVO_REVERSE         (1)
 
 /*
  * Exported Types
@@ -38,7 +49,7 @@ HsException multivacError(const char* msg);
 typedef void *MVMeshH;
 
 MVMeshH
-MVNewMesh ( double Xmin, double Xmax, double Ymin, double YMax
+MVNewMesh ( double Xmin, double Xmax, double Ymin, double Ymax
           , double Nx, double Ny);
 void MVDestroyMesh(MVMeshH);
 
@@ -61,22 +72,31 @@ typedef struct {
   double y;
 } MVPoint;
 
-typedef enum {MVO_TRIGONOMETRIC=0, MVO_REVERSE=1} MVOrientation;
-
 
 typedef void *MVFrontH;
 
-MVFrontH MVNewFront (int numPoints, MVOrientation orientation, MVPoint *points);
+MVFrontH MVNewFront (int numPoints, int orientation, MVPoint *points);
+MVFrontH MVNewEmptyFront ();
 
 MVPoint *
-MVGetFrontPoints (MVFrontH front, int *numPoints, MVOrientation *orientation);
+MVGetFrontPoints (MVFrontH front, int *numPoints, int *orientation);
 
 void MVDestroyFront(MVFrontH);
+
+// MVFrontArrayH
+
+typedef void *MVFrontArrayH;
+
+MVFrontArrayH MVNewFrontArray ();
+int MVGetNumFronts (MVFrontArrayH array);
+void MVCopyFrontAt (MVFrontArrayH array, int ix, MVFrontH front);
+void MVDestroyFrontArray(MVFrontArrayH array);
 
 // Simulate
 
 HsException Simulate( MVMeshH meshH, MVSpeedH speedH, MVFrontH frontH
-                    , int NbIterations, double FinalTime);
+                    , MVFrontArrayH
+                    , int NbIterations, double FinalTime, double Period);
 
 
 #ifdef __cplusplus

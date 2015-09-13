@@ -31,8 +31,10 @@ import System.IO.Unsafe (unsafePerformIO)
 import GHC.Exts (inline)
 
 import qualified Data.Vector.Storable as St
+import qualified Data.Vector as V
 
 import Point (Point(..))
+
 
 data Simulation = Simulation {
     simMesh          :: Mesh
@@ -40,6 +42,7 @@ data Simulation = Simulation {
   , simNumIterations :: Int
   , simFinalTime     :: Double
   , simInitialFront  :: Front
+  , simSavePeriod    :: Double
 }
 
 data Front = Front {
@@ -67,9 +70,12 @@ data Speed = Speed {
   , speedDepCurvature :: Bool
   }
 
-simulate :: Simulation -> IO ()
-simulate Simulation{..} =
-  c_Simulate simMesh simSpeed simInitialFront simNumIterations simFinalTime
+simulate :: Simulation -> IO (V.Vector Front)
+simulate Simulation{..} = do
+  fronts <- newFrontArray
+  c_Simulate simMesh simSpeed simInitialFront fronts simNumIterations
+             simFinalTime simSavePeriod
+  toFrontVector fronts
 {-# INLINE simulate #-}
 
 
@@ -136,6 +142,15 @@ fromFrontH f = do
   fp <- newForeignPtr c_free (castPtr ptr)
   return $ Front (St.unsafeFromForeignPtr0 fp size) orientation
 
+
+toFrontVector :: FrontArrayH -> IO (V.Vector Front)
+toFrontVector a = do
+  n <- getNumFronts a
+  front <- c_newEmptyFront
+  V.generateM n $ \ix -> do
+    copyFrontAt a ix front
+    fromFrontH front
+
 toSpeedH :: Speed -> SpeedH
 toSpeedH Speed{..} = unsafePerformIO $ do
   fm    <- wrapFastMarchSpeedFunc speedFastMarch
@@ -194,9 +209,9 @@ checkHsException ePtr
 -- Low level bindings
 --
 
-
 #include "cbits.h"
 {#context prefix = "MV" #}
+
 
 {#pointer HsException as ExceptionPtr nocode #}
 
@@ -214,16 +229,20 @@ foreign import ccall "wrapper"
   c_wrapNarrowBandSpeedFunc :: NarrowBandSpeedFunc' -> IO CNarrowBandSpeedFunc
 
 
-
 {#pointer FrontH foreign finalizer DestroyFront as ^ newtype#}
 
-{#enum Orientation {} with prefix = "MVO_" deriving (Eq,Bounded,Show) #}
+{#enum define Orientation { MVO_UNKNOWN       as Unknown
+                          , MVO_TRIGONOMETRIC as Trigonometric
+                          , MVO_REVERSE       as Reverse
+                          } deriving (Eq,Bounded,Show) #}
 
 {#fun unsafe NewFront as c_newFront {
     `Int'
   , `Orientation'
   , `Ptr ()'
   } -> `FrontH' #}
+
+{#fun unsafe NewEmptyFront as c_newEmptyFront  {} -> `FrontH' #}
 
 {#fun unsafe GetFrontPoints as ^ {
     `FrontH'
@@ -237,6 +256,12 @@ peekInt = fmap fromIntegral . peek
 peekEnum :: Ptr CInt -> IO Orientation
 peekEnum = fmap (toEnum . fromIntegral) . peek
 
+
+{#pointer FrontArrayH foreign finalizer DestroyFrontArray as ^ newtype#}
+
+{#fun unsafe NewFrontArray as ^ {} -> `FrontArrayH' #}
+{#fun unsafe GetNumFronts as ^ {`FrontArrayH'} -> `Int' #}
+{#fun unsafe CopyFrontAt as ^ {`FrontArrayH', `Int', `FrontH'} -> `()' #}
 
 {#pointer MeshH foreign finalizer DestroyMesh as ^ newtype#}
 
@@ -267,7 +292,9 @@ peekEnum = fmap (toEnum . fromIntegral) . peek
     withMesh* `Mesh'
   , withSpeed* `Speed'
   , withFront* `Front'
+  , `FrontArrayH'
   , `Int'
+  , `Double'
   , `Double'
   } -> `()' checkHsException* #}
 {-# INLINE c_Simulate #-}

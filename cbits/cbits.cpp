@@ -32,7 +32,7 @@ void MVDestroySpeed(MVSpeedH speedH)
 }
 
 MVFrontH
-MVNewFront (int numPoints, MVOrientation orientation, MVPoint *points)
+MVNewFront (int numPoints, int orientation, MVPoint *points)
 {
   CurveType *front = new CurveType();
   front->SetOrientation(orientation);
@@ -45,12 +45,19 @@ MVNewFront (int numPoints, MVOrientation orientation, MVPoint *points)
   return static_cast<MVFrontH>(front);
 }
 
+MVFrontH
+MVNewEmptyFront ()
+{
+  CurveType *front = new CurveType();
+  return static_cast<MVFrontH>(front);
+}
+
 MVPoint *
-MVGetFrontPoints (MVFrontH frontH, int *numPoints, MVOrientation *orientation)
+MVGetFrontPoints (MVFrontH frontH, int *numPoints, int *orientation)
 {
   MVPoint *points = NULL;
   CurveType *front = static_cast<CurveType*>(frontH);
-  *orientation = static_cast<MVOrientation>(front->GetOrientation());
+  *orientation = front->GetOrientation();
   int n = *numPoints = front->GetNbPoints();
   if (n>0) {
     List<Vector<double> > &list = front->GetPoints();
@@ -73,125 +80,52 @@ void MVDestroyFront(MVFrontH frontH)
 }
 
 
+MVFrontArrayH MVNewFrontArray ()
+{
+  FrontArrayType *fronts = new FrontArrayType;
+  return static_cast<MVFrontArrayH>(fronts);
+}
+
+int MVGetNumFronts (MVFrontArrayH array)
+{
+  return static_cast<FrontArrayType*>(array)->size();
+}
+
+void MVCopyFrontAt (MVFrontArrayH array, int ix, MVFrontH frontH)
+{
+  CurveType &front = static_cast<FrontArrayType*>(array)->at(ix);
+  CurveType *frontDest = static_cast<CurveType*>(frontH);
+  frontDest->Copy(front);
+}
+
+void MVDestroyFrontArray(MVFrontH array) {
+  FrontArrayType *fronts = static_cast<FrontArrayType*>(array);
+  delete fronts;
+}
+
+
+
 HsException Simulate( MVMeshH meshH, MVSpeedH speedH, MVFrontH frontH
-                    , int NbIterations , double FinalTime)
+                    , MVFrontArrayH frontsH
+                    , int NbIterations, double FinalTime, double Period)
 {
   TRY;
 
   MeshType Mesh(*static_cast<MeshType*>(meshH));
   SpeedType F(*static_cast<SpeedType*>(speedH));
-  InitialCurveType InitialCurve(*static_cast<InitialCurveType*>(frontH));
+  InitialCurveType InitialCurve(*static_cast<CurveType*>(frontH));
+  FrontArrayType* fronts(static_cast<FrontArrayType*>(frontsH));
+
   LevelSetType Phi;
   InitializerType Initializer;
 
-
-  /////////////
-  // UPDATER //
-  /////////////
-
-  // Choose an initializer:
-  //   1) CNarrowBandFirstOrderEngquistOsher<double> *
-  //   2) CNarrowBandFirstOrderLaxFriedrichs<double> *
-  //   3) CNarrowBandEno2EngquistOsher<double> *
-  //   4) CFastMarchingFirstOrderEngquistOsher<double> **
-  //         * Narrow band level set method
-  //        ** Fast marching method
-  typedef CNarrowBandFirstOrderEngquistOsher<double> UpdaterType;
-
-  // Choose the right constructor and choose its parameters:
-  //   1, 2, 3) Updater(TubeSemiWidth, BarrierWidth, OutSpaceWidth)
-  //              | TubeSemiWidth: number of grid points on each side of the front.
-  //              | BarrierWidth: number of grid points (on each side of the front)
-  //                        that imply tube reconstruction when reached.
-  //              | OutSpaceWidth: number of grid points (on each side of the front)
-  //                         that must not be reached.
-  //              | Examples: Updater(6, 3, 1) or Updater(12, 5, 1).
-  //   4) Updater(TMax)
-  //        | TMax: time greater than all arrival times that will be computed.
   UpdaterType Updater(6, 3, 1);
 
+  SaverType Saver(*fronts, Period);
 
-  ///////////
-  // SAVER //
-  ///////////
-
-  // Choose the saver type:
-  //   1) CNeverSave<double>
-  //        | Nothing is saved.
-  //   2) CCurvesSaver<double>
-  //        | The front is constructed and saved at each time step.
-  //        | Not relevant for the fast marching method.
-  //   3) CSaveLastCurve<double>
-  //        | Saves the last curve, after all calculations.
-  //        | Not relevant for the fast marching method.
-  //   4) CSaveAtTheEnd<double>
-  //        | Saves the level set, after all calculations.
-  //        | Relevant for the fast marching method.
-  typedef CCurvesSaver<double> SaverType;
-
-  // Number of curves that will be saved.
-  // Set NbCurves to 0 in order to save all curves.
-  int NbCurves = 10;
-
-  // Output directory.
-  string Directory = "results/";
-
-  // Stores time at each time step.
-  string TimeFile = Directory + "Time";
-
-  // Stores front points.
-  string CurvesFile = Directory + "Curves";
-  // Stores number of points on fronts at each time step.
-  string CurveLengthsFile = Directory + "CurveLengths";
-  // Stores the level set function.
-  string PhiFile = Directory + "Phi";
-  // Stores the speed function.
-  string FFile = Directory + "F";
-
-  // Stores grid coordinates along the (x'x) axe.
-  string XFile = Directory + "X";
-  // Stores grid coordinates along the (y'y) axe.
-  string YFile = Directory + "Y";
-  // Stores mesh points.
-  string PointsFile = Directory + "Points";
-  // Stores mesh edges.
-  string EdgesFile = Directory + "Edges";
-  // Stores mesh triangles.
-  string TrianglesFile = Directory + "Triangles";
-
-  // Indicates the number of iterations between saves.
-  int Period = NbIterations / (NbCurves==0?NbIterations:NbCurves);
-
-  SaverType Saver(TimeFile, CurvesFile,
-      CurveLengthsFile, PhiFile, FFile, XFile, YFile,
-      PointsFile, EdgesFile, TrianglesFile, Period);
-
-
-
-  /////////////////////
-  /////////////////////
-  ////  SIMULATOR  ////
-  /////////////////////
-  /////////////////////
-
-  CSimulator<double, MeshType, SpeedType, InitialCurveType,
-    LevelSetType, InitializerType, UpdaterType, SaverType>
-    Simulator(Mesh, F, InitialCurve, Phi,
-        Initializer, Updater, Saver,
-        NbIterations, FinalTime);
-
-
-  ////////////////////////////////
-  // SIMULATION INITIALIZATIONS //
-  ////////////////////////////////
-
+  SimulatorType Simulator( Mesh, F, InitialCurve, Phi, Initializer, Updater
+                         , Saver, NbIterations, FinalTime);
   Simulator.Init();
-
-
-  ////////////////
-  // SIMULATION //
-  ////////////////
-
   Simulator.Run();
 
   CATCH;
