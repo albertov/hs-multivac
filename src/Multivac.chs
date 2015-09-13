@@ -19,7 +19,7 @@ module Multivac (
 ) where
 
 import Control.Applicative ((<$>), (<*>))
-import Control.Monad ((>=>), (<=<))
+import Control.Monad ((>=>))
 import Control.Exception (Exception(toException), SomeException, throw, try)
 import Data.Typeable
 import Foreign.C.Types

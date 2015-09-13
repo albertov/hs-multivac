@@ -17,6 +17,10 @@ source-repository head
   type:                git
   location:            https://github.com/meteogrid/hs-multivac.git
 
+Flag Debug
+  Description: Enable debug support
+  Default:     False
+
 library
   build-tools:         c2hs
   build-depends:       base >=4.8 && <4.9
@@ -32,4 +36,10 @@ library
   c-sources:           cbits/cbits.cpp
   include-dirs:        cbits
                      , Multivac-1.10.1
-  cc-options:          -Wall -O2 -DMULTIVAC_REPORT -fpermissive -mmacosx-version-min=10.6
+  cc-options:          -Wall -O2
+  if os(darwin)
+    cc-options:       -mmacosx-version-min=10.6
+  if os(linux)
+    cc-options:       -fpermisive
+  if flag(debug)
+      cc-options:     -DDEBUG -DMULTIVAC_REPORT
