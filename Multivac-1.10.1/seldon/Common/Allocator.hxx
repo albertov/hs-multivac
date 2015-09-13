@@ -19,6 +19,8 @@
 
 #ifndef SELDON_FILE_ALLOCATOR_HXX
 
+#include <string.h>
+
 namespace Seldon
 {
 

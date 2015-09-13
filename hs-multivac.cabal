@@ -32,4 +32,4 @@ library
   c-sources:           cbits/cbits.cpp
   include-dirs:        cbits
                      , Multivac-1.10.1
-  cc-options:          -Wall -O2 -DMULTIVAC_REPORT
+  cc-options:          -Wall -O2 -DMULTIVAC_REPORT -fpermissive
