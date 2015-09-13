@@ -42,4 +42,4 @@ library
   if os(linux)
     cc-options:       -fpermissive
   if flag(debug)
-      cc-options:     -DDEBUG -DMULTIVAC_REPORT
+      cc-options:     -g -DDEBUG -DMULTIVAC_REPORT

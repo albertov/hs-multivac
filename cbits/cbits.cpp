@@ -73,92 +73,15 @@ void MVDestroyFront(MVFrontH frontH)
 }
 
 
-HsException Simulate( MVMeshH meshPtr, MVSpeedH speedPtr, int NbIterations
-                    , double FinalTime)
+HsException Simulate( MVMeshH meshH, MVSpeedH speedH, MVFrontH frontH
+                    , int NbIterations , double FinalTime)
 {
   TRY;
 
-  MeshType Mesh(*static_cast<MeshType*>(meshPtr));
-  SpeedType F(*static_cast<SpeedType*>(speedPtr));
-
-
-  ///////////////////
-  // INITIAL CURVE //
-  ///////////////////
-
-  // Choose the initial curve:
-  //   1) CCircle<double>
-  //   2) CTwoCircles<double>
-  //   3) CThreeCircles<double>
-  //   4) CIsland<double>
-  //   5) CIsland0<double>
-  //   6) CSetOfPoints<double>
-  typedef CCircle<double> InitialCurveType;
-
-  // For a circle, center coordinates and radius.
-  double CircleCenterX = 1.0;
-  double CircleCenterY = 1.5;
-  double CircleRadius = 0.5;
-
-  // For a second circle, center coordinates and radius.
-  double CircleCenterX0 = 1.65;
-  double CircleCenterY0 = 1.6;
-  double CircleRadius0 = 0.3;
-
-  // For a third circle, center coordinates and radius.
-  double CircleCenterX1 = 0.50;
-  double CircleCenterY1 = 1.0;
-  double CircleRadius1 = 0.25;
-
-  // File containing a front defined by a set of points.
-  string InitialFrontFile = "[full path]/[set].pts";
-  // Is the (Xmin, Ymin) outside the front?
-  bool origin_out = false;
-
-  // If set to 'true', outside and inside are swapped.
-  bool reversed = false;
-
-  // Choose the right constructor:
-  //   1) InitialCurve(CircleCenterX, CircleCenterY, CircleRadius,
-  //                   reversed)
-  //   2, 4) InitialCurve(CircleCenterX, CircleCenterY, CircleRadius,
-  //                      CircleCenterX0, CircleCenterY0, CircleRadius0,
-  //                      reversed)
-  //   3, 5) InitialCurve(CircleCenterX, CircleCenterY, CircleRadius,
-  //                      CircleCenterX0, CircleCenterY0, CircleRadius0,
-  //                      CircleCenterX1, CircleCenterY1, CircleRadius1,
-  //                      reversed)
-  //   6) InitialCurve(InitialFrontFile, 0, origin_out ^ reversed)
-  InitialCurveType InitialCurve(CircleCenterX, CircleCenterY, CircleRadius);
-
-
-  ////////////////////////
-  // LEVEL SET FUNCTION //
-  ////////////////////////
-
-  // Choose the level set function type:
-  //   1) COrthogonalLevelSet<double>
-  //   2) --
-  typedef COrthogonalLevelSet<double> LevelSetType;
-
-  // Choose the right constructor:
-  //   1) Phi
-  //   2) --
+  MeshType Mesh(*static_cast<MeshType*>(meshH));
+  SpeedType F(*static_cast<SpeedType*>(speedH));
+  InitialCurveType InitialCurve(*static_cast<InitialCurveType*>(frontH));
   LevelSetType Phi;
-
-
-  /////////////////
-  // INITIALIZER //
-  /////////////////
-
-  // Choose an initializer:
-  //   1) CNarrowBandNeverInit<double> *
-  //   2) CNarrowBandExtension<double> *
-  //   3) CFastMarchingNeverInit<double> **
-  //         * Narrow band level set method
-  //        ** Fast marching method
-  typedef CNarrowBandNeverInit<double> InitializerType;
-
   InitializerType Initializer;
 
 

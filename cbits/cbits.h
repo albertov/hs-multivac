@@ -17,6 +17,9 @@ namespace HsMultivac {
   typedef COrthogonalMesh<double> MeshType;
   typedef CSpeedCallback<double> SpeedType;
   typedef Curve<double> CurveType;
+  typedef CSetOfPoints<double> InitialCurveType;
+  typedef COrthogonalLevelSet<double> LevelSetType;
+  typedef CNarrowBandExtension<double> InitializerType;
 }
 
 extern "C" {
@@ -72,8 +75,8 @@ void MVDestroyFront(MVFrontH);
 
 // Simulate
 
-HsException Simulate( MVMeshH meshPtr, MVSpeedH speedPtr, int NbIterations
-                    , double FinalTime);
+HsException Simulate( MVMeshH meshH, MVSpeedH speedH, MVFrontH frontH
+                    , int NbIterations, double FinalTime);
 
 
 #ifdef __cplusplus

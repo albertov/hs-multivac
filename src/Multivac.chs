@@ -3,19 +3,17 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Multivac (
     Simulation (..)
-  , simulate
-
   , Speed (..)
-
   , Mesh (..)
-
-  , Front
-  , mkFront
-  , frontToVector
+  , Front (..)
+  , Point (..)
+  , Orientation (..)
 
   , FastMarchSpeedFunc
   , NarrowBandSpeedFunc
   , MaxFSpeedFunc
+
+  , simulate
 ) where
 
 import Control.Applicative ((<$>), (<*>))
@@ -30,6 +28,7 @@ import Foreign.StablePtr
 import Foreign.Storable
 import Foreign.ForeignPtr
 import System.IO.Unsafe (unsafePerformIO)
+import GHC.Exts (inline)
 
 import qualified Data.Vector.Storable as St
 
@@ -40,8 +39,13 @@ data Simulation = Simulation {
   , simSpeed         :: Speed
   , simNumIterations :: Int
   , simFinalTime     :: Double
+  , simInitialFront  :: Front
 }
 
+data Front = Front {
+    frontCurve       :: St.Vector Point
+  , frontOrientation :: Orientation
+  } deriving (Show)
 
 data Mesh = Mesh {
     meshMinX :: Double
@@ -63,6 +67,12 @@ data Speed = Speed {
   , speedDepCurvature :: Bool
   }
 
+simulate :: Simulation -> IO ()
+simulate Simulation{..} =
+  c_Simulate simMesh simSpeed simInitialFront simNumIterations simFinalTime
+{-# INLINE simulate #-}
+
+
 type ExceptionPtr = StablePtr SomeException
 
 --
@@ -75,7 +85,8 @@ type FastMarchSpeedFunc'  =  Double -> Double -> Double -> Ptr CDouble
 wrapFastMarchSpeedFunc :: FastMarchSpeedFunc -> IO CFastMarchSpeedFunc
 wrapFastMarchSpeedFunc f =
   c_wrapFastMarchSpeedFunc $ \a1 a2 a3 ->
-    wrapErrorFunc (f a1 a2 a3) . castPtr
+    wrapErrorFunc (inline f a1 a2 a3) . castPtr
+{-# INLINE wrapFastMarchSpeedFunc #-}
 
 --
 -- NarrowBandSpeedFunc wrapping
@@ -89,7 +100,8 @@ type NarrowBandSpeedFunc' = Double -> Double -> Double -> Double -> Double ->
 wrapNarrowBandSpeedFunc :: NarrowBandSpeedFunc -> IO CNarrowBandSpeedFunc
 wrapNarrowBandSpeedFunc f =
   c_wrapNarrowBandSpeedFunc $ \a1 a2 a3 a4 a5 a6 ->
-    wrapErrorFunc (f a1 a2 a3 a4 a5 a6) . castPtr
+    wrapErrorFunc (inline f a1 a2 a3 a4 a5 a6) . castPtr
+{-# INLINE wrapNarrowBandSpeedFunc #-}
 
 
 --
@@ -104,35 +116,44 @@ type MaxFSpeedFunc' =  Double -> Double -> Double -> Double -> Double ->
 wrapMaxFSpeedFunc :: MaxFSpeedFunc -> IO CMaxFSpeedFunc
 wrapMaxFSpeedFunc f =
   c_wrapMaxFSpeedFunc $ \a1 a2 a3 a4 a5 ->
-    wrapErrorFunc (f a1 a2 a3 a4 a5) . castPtr
-
-simulate :: Simulation -> IO ()
-simulate Simulation{simMesh=Mesh{..}, simSpeed=Speed{..},..} = do
-  speed <- initializeSpeed
-  mesh  <- initializeMesh
-  c_Simulate mesh speed simNumIterations simFinalTime
-  where
-    initializeMesh = newMesh meshMinX meshMaxX meshMinY meshMaxY meshNX meshNY
-    initializeSpeed = do
-      fm    <- wrapFastMarchSpeedFunc speedFastMarch
-      nb    <- wrapNarrowBandSpeedFunc speedNarrowBand
-      maxF1 <- wrapMaxFSpeedFunc speedMaxF1
-      maxF2 <- wrapMaxFSpeedFunc speedMaxF1
-      newSpeed fm nb maxF1 maxF2
-               speedDepPosition speedDepTime speedDepNormal speedDepCurvature
+    wrapErrorFunc (inline f a1 a2 a3 a4 a5) . castPtr
+{-# INLINE wrapMaxFSpeedFunc #-}
 
 
-mkFront :: Orientation -> St.Vector Point -> Front
-mkFront orientation v = unsafePerformIO $
-  St.unsafeWith v (c_newFront (St.length v) orientation . castPtr)
+toFrontH :: Front -> FrontH
+toFrontH f
+  | St.null v = error "Empty front"
+  | otherwise = unsafePerformIO $ St.unsafeWith v (c_newFront n o . castPtr)
+  where Front{frontCurve=v, frontOrientation=o} = f
+        n = St.length v
 
-frontToVector :: Front -> IO (Orientation, St.Vector Point)
-frontToVector f = do
+withFront :: Front -> (Ptr FrontH -> IO a) -> IO a
+withFront = withFrontH . toFrontH
+
+fromFrontH :: FrontH -> IO Front
+fromFrontH f = do
   (ptr, size, orientation) <- getFrontPoints f
   fp <- newForeignPtr c_free (castPtr ptr)
-  return (orientation, St.unsafeFromForeignPtr0 fp size)
+  return $ Front (St.unsafeFromForeignPtr0 fp size) orientation
 
+toSpeedH :: Speed -> SpeedH
+toSpeedH Speed{..} = unsafePerformIO $ do
+  fm    <- wrapFastMarchSpeedFunc speedFastMarch
+  nb    <- wrapNarrowBandSpeedFunc speedNarrowBand
+  maxF1 <- wrapMaxFSpeedFunc speedMaxF1
+  maxF2 <- wrapMaxFSpeedFunc speedMaxF1
+  newSpeed fm nb maxF1 maxF2
+           speedDepPosition speedDepTime speedDepNormal speedDepCurvature
 
+withSpeed :: Speed -> (Ptr SpeedH -> IO a) -> IO a
+withSpeed = withSpeedH . toSpeedH
+
+toMeshH :: Mesh -> MeshH
+toMeshH Mesh{..} = unsafePerformIO $
+  newMesh meshMinX meshMaxX meshMinY meshMaxY meshNX meshNY
+
+withMesh :: Mesh -> (Ptr MeshH -> IO a) -> IO a
+withMesh = withMeshH . toMeshH
 
 --
 -- Error handling
@@ -194,18 +215,18 @@ foreign import ccall "wrapper"
 
 
 
-{#pointer FrontH as Front foreign finalizer DestroyFront as ^ newtype#}
+{#pointer FrontH foreign finalizer DestroyFront as ^ newtype#}
 
 {#enum Orientation {} with prefix = "MVO_" deriving (Eq,Bounded,Show) #}
 
-{#fun NewFront as c_newFront {
+{#fun unsafe NewFront as c_newFront {
     `Int'
   , `Orientation'
   , `Ptr ()'
-  } -> `Front' #}
+  } -> `FrontH' #}
 
-{#fun GetFrontPoints as ^ {
-    `Front'
+{#fun unsafe GetFrontPoints as ^ {
+    `FrontH'
   , alloca- `Int' peekInt*
   , alloca- `Orientation' peekEnum*
   } -> `Ptr ()' #}
@@ -219,7 +240,7 @@ peekEnum = fmap (toEnum . fromIntegral) . peek
 
 {#pointer MeshH foreign finalizer DestroyMesh as ^ newtype#}
 
-{#fun NewMesh as ^ {
+{#fun unsafe NewMesh as ^ {
     `Double'
   , `Double'
   , `Double'
@@ -230,7 +251,7 @@ peekEnum = fmap (toEnum . fromIntegral) . peek
 
 {#pointer SpeedH foreign finalizer DestroySpeed as ^ newtype#}
 
-{#fun NewSpeed as ^ {
+{#fun unsafe NewSpeed as ^ {
     `CFastMarchSpeedFunc'
   , `CNarrowBandSpeedFunc'
   , `CMaxFSpeedFunc'
@@ -243,12 +264,13 @@ peekEnum = fmap (toEnum . fromIntegral) . peek
 
 
 {#fun Simulate as c_Simulate {
-    `MeshH'
-  , `SpeedH'
+    withMesh* `Mesh'
+  , withSpeed* `Speed'
+  , withFront* `Front'
   , `Int'
   , `Double'
   } -> `()' checkHsException* #}
+{-# INLINE c_Simulate #-}
 
 foreign import ccall "stdlib.h &free"
   c_free :: FunPtr (Ptr a -> IO ())
-
