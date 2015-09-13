@@ -22,7 +22,8 @@ module Multivac (
 
 import Control.Applicative ((<$>), (<*>))
 import Control.Monad ((>=>), (<=<))
-import Control.Exception (Exception(toException))
+import Control.Exception (Exception(toException), SomeException, throw)
+import Data.IORef
 import Foreign.C.Types
 import Foreign.Marshal.Utils
 import Foreign.Marshal.Alloc (alloca)
@@ -79,7 +80,7 @@ simulate :: Simulation -> IO Status
 simulate Simulation{simMesh=Mesh{..}, simSpeed=Speed{..},..} = do
   speed <- initializeSpeed
   mesh  <- initializeMesh
-  r <- c_Simulate mesh speed simNumIterations simFinalTime
+  r <- catchAndRethrow (c_Simulate mesh speed simNumIterations simFinalTime)
   return (if r==0 then Success else Error)
   where
     initializeMesh = newMesh meshMinX meshMaxX meshMinY meshMaxY meshNX meshNY
@@ -105,6 +106,21 @@ frontToVector f = do
 throwError :: Exception e => e -> IO ()
 throwError = (c_throwError . castStablePtrToPtr <=< newStablePtr) . toException
 
+catchAndRethrow :: IO a -> IO a
+catchAndRethrow a = do
+  result <- newIORef undefined
+  ePtr <- c_catchError =<< wrapIOAction (a >>= writeIORef result)
+  if ePtr /= nullPtr
+    then do
+      let sPtr = castPtrToStablePtr ePtr :: StablePtr SomeException
+      exc <- deRefStablePtr sPtr
+      freeStablePtr sPtr
+      throw exc
+    else
+     readIORef result
+
+
+
 --
 -- Low level bindings
 --
@@ -114,8 +130,12 @@ throwError = (c_throwError . castStablePtrToPtr <=< newStablePtr) . toException
 {#context prefix = "MV" #}
 
 {#pointer FastMarchSpeedFunc as CFastMarchSpeedFunc #}
+{#pointer MVAction #}
 {#pointer NarrowBandSpeedFunc as CNarrowBandSpeedFunc #}
 {#pointer MaxFSpeedFunc as CMaxFSpeedFunc #}
+
+foreign import ccall "wrapper"
+  wrapIOAction :: IO () -> IO MVAction
 
 foreign import ccall "wrapper"
   wrapFastMarchSpeedFunc :: FastMarchSpeedFunc-> IO CFastMarchSpeedFunc
@@ -125,6 +145,9 @@ foreign import ccall "wrapper"
 
 foreign import ccall "wrapper"
   wrapMaxFSpeedFunc :: MaxFSpeedFunc-> IO CMaxFSpeedFunc
+
+{#fun CatchError as c_catchError {
+    `MVAction' }  -> `Ptr ()' #}
 
 {#fun ThrowError as c_throwError {
     `Ptr ()' }  -> `()' #}
