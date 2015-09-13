@@ -24,7 +24,6 @@ import Control.Exception (Exception(toException), SomeException, throw, try)
 import Data.Typeable
 import Foreign.C.Types
 import Foreign.C.String
-import Foreign.Marshal.Utils
 import Foreign.Marshal.Alloc (alloca)
 import Foreign.Ptr
 import Foreign.StablePtr

@@ -40,6 +40,6 @@ library
   if os(darwin)
     cc-options:       -mmacosx-version-min=10.6
   if os(linux)
-    cc-options:       -fpermisive
+    cc-options:       -fpermissive
   if flag(debug)
       cc-options:     -DDEBUG -DMULTIVAC_REPORT
