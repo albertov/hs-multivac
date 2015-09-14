@@ -1230,8 +1230,8 @@ namespace Seldon
     for (int i = 0; i < this->m_; i++)
       {
 	for (int j = 0; j < this->n_; j++)
-	  cout << (*this)(i, j) << "\t";
-	cout << endl;
+	  cerr << (*this)(i, j) << "\t";
+	cerr << endl;
       }
   }
 

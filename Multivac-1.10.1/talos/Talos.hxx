@@ -32,11 +32,11 @@
 
 //! To display a message... call Hermes!
 #ifndef ERR
-#define ERR(x) std::cout << "Hermes - " #x << std::endl
+#define ERR(x) std::cerr << "Hermes - " #x << std::endl
 #endif
 //! To display a variable (with its name).
 #ifndef DISP
-#define DISP(x) std::cout << #x ": " << (x) << std::endl
+#define DISP(x) std::cerr << #x ": " << (x) << std::endl
 #endif
 
 #ifdef TRY
@@ -52,22 +52,22 @@
 }\
 catch (std::exception& Err)\
 {\
-cout << "C++ exception: " << Err.what() << endl;\
+cerr << "C++ exception: " << Err.what() << endl;\
 return 1;\
 }\
 catch (std::string& str)\
 {\
-cout << str << endl;\
+cerr << str << endl;\
 return 1;\
 }\
 catch (const char* str)\
 {\
-cout << str << endl;\
+cerr << str << endl;\
 return 1;\
 }\
 catch(...)\
 {\
-cout << "Unknown exception..." <<endl;\
+cerr << "Unknown exception..." <<endl;\
 return 1;\
 }
 

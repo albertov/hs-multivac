@@ -41,7 +41,7 @@ namespace Seldon
   */
   Error::Error()  throw()
   {
-    cout << "ERROR!" << endl;
+    cerr << "ERROR!" << endl;
     function = "";
     comment = "";
   }
@@ -53,7 +53,7 @@ namespace Seldon
   */
   Error::Error(string f)  throw()
   {
-    cout << "ERROR!" << endl;
+    cerr << "ERROR!" << endl;
     function = f;
     comment = "";
   }
@@ -66,7 +66,7 @@ namespace Seldon
   */
   Error::Error(string f, string c)  throw()
   {
-    cout << "ERROR!" << endl;
+    cerr << "ERROR!" << endl;
     function = f;
     comment = c;
   }
@@ -97,13 +97,13 @@ namespace Seldon
   */
   void Error::What()
   {
-    cout << "An undefined error occured";
+    cerr << "An undefined error occured";
     if (function.size() != 0)
-      cout << " in " << function;
-    cout << "." << endl;
+      cerr << " in " << function;
+    cerr << "." << endl;
     if (comment.size() != 0)
-      cout << "   " << comment << endl;
-    cout << endl;
+      cerr << "   " << comment << endl;
+    cerr << endl;
   }
 
 
@@ -148,13 +148,13 @@ namespace Seldon
   */
   void NoMemory::What()
   {
-    cout << "Out of memory";
+    cerr << "Out of memory";
     if (this->function != "")
-      cout << " in " << this->function;
-    cout << "." << endl;
+      cerr << " in " << this->function;
+    cerr << "." << endl;
     if (this->comment != "")
-      cout << "   " << this->comment << endl;
-    cout << endl;
+      cerr << "   " << this->comment << endl;
+    cerr << endl;
   }
 
 
@@ -199,13 +199,13 @@ namespace Seldon
   */
   void WrongDim::What()
   {
-    cout << "Wrong dimensions involved";
+    cerr << "Wrong dimensions involved";
     if (this->function != "")
-      cout << " in " << this->function;
-    cout << "." << endl;
+      cerr << " in " << this->function;
+    cerr << "." << endl;
     if (this->comment != "")
-      cout << "   " << this->comment << endl;
-    cout << endl;
+      cerr << "   " << this->comment << endl;
+    cerr << endl;
   }
 
 
@@ -250,13 +250,13 @@ namespace Seldon
   */
   void WrongIndex::What()
   {
-    cout << "Index out of range";
+    cerr << "Index out of range";
     if (this->function != "")
-      cout << " in " << this->function;
-    cout << "." << endl;
+      cerr << " in " << this->function;
+    cerr << "." << endl;
     if (this->comment != "")
-      cout << "   " << this->comment << endl;
-    cout << endl;
+      cerr << "   " << this->comment << endl;
+    cerr << endl;
   }
 
 
@@ -301,13 +301,13 @@ namespace Seldon
   */
   void WrongRow::What()
   {
-    cout << "Row index out of range";
+    cerr << "Row index out of range";
     if (this->function != "")
-      cout << " in " << this->function;
-    cout << "." << endl;
+      cerr << " in " << this->function;
+    cerr << "." << endl;
     if (this->comment != "")
-      cout << "   " << this->comment << endl;
-    cout << endl;
+      cerr << "   " << this->comment << endl;
+    cerr << endl;
   }
 
 
@@ -352,13 +352,13 @@ namespace Seldon
   */
   void WrongCol::What()
   {
-    cout << "Column index out of range";
+    cerr << "Column index out of range";
     if (this->function != "")
-      cout << " in " << this->function;
-    cout << "." << endl;
+      cerr << " in " << this->function;
+    cerr << "." << endl;
     if (this->comment != "")
-      cout << "   " << this->comment << endl;
-    cout << endl;
+      cerr << "   " << this->comment << endl;
+    cerr << endl;
   }
 
 
@@ -403,13 +403,13 @@ namespace Seldon
   */
   void IOError::What()
   {
-    cout << "Error while performing an I/O operation";
+    cerr << "Error while performing an I/O operation";
     if (this->function != "")
-      cout << " in " << this->function;
-    cout << "." << endl;
+      cerr << " in " << this->function;
+    cerr << "." << endl;
     if (this->comment != "")
-      cout << "   " << this->comment << endl;
-    cout << endl;
+      cerr << "   " << this->comment << endl;
+    cerr << endl;
   }
 
 

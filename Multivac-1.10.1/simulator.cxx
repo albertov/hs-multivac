@@ -143,36 +143,36 @@ namespace Multivac
 	    t = t + Delta_t;  i++;
 
 #ifdef MULTIVAC_REPORT
-	    cout << "Iteration: " << iter << endl;
-	    cout << "----------" << endl;
+	    cerr << "Iteration: " << iter << endl;
+	    cerr << "----------" << endl;
 	    time = clock();
 #endif
 
 	    Updater.UpdateLevelSet(Delta_t, Mesh, F, Phi, t);
 
 #ifdef MULTIVAC_REPORT
-	    cout << "Update: " << clock() - time << endl;
+	    cerr << "Update: " << clock() - time << endl;
 	    time = clock();
 #endif
 
 	    Initializer.InitMesh(iter, Mesh, Phi, F, Updater, t);
 
 #ifdef MULTIVAC_REPORT
-	    cout << "InitMesh: " << clock() - time << endl;
+	    cerr << "InitMesh: " << clock() - time << endl;
 	    time = clock();
 #endif
 
 	    Initializer.InitPhiAndF(iter, Mesh, Phi, F, Updater, t);
 
 #ifdef MULTIVAC_REPORT
-	    cout << "InitPhiAndF: " << clock() - time << endl;
+	    cerr << "InitPhiAndF: " << clock() - time << endl;
 	    time = clock();
 #endif
 
 	    Saver.SaveAtCurrentIteration(Mesh, F, Phi, t, iter, Initializer);
 
 #ifdef MULTIVAC_REPORT
-	    cout << "SaveAtCurrentIteration: " << clock() - time
+	    cerr << "SaveAtCurrentIteration: " << clock() - time
 		 << endl << endl;
 #endif
 
@@ -204,29 +204,29 @@ namespace Multivac
 	    iter++;
 
 #ifdef MULTIVAC_REPORT
-	    cout << "Iteration: " << iter << endl;
-	    cout << "----------" << endl;
+	    cerr << "Iteration: " << iter << endl;
+	    cerr << "----------" << endl;
 	    time = clock();
 #endif
 
 	    Updater.UpdateLevelSet(0.0, Mesh, F, Phi, 0.0);
 
 #ifdef MULTIVAC_REPORT
-	    cout << "Update: " << clock() - time << endl;
+	    cerr << "Update: " << clock() - time << endl;
 	    time = clock();
 #endif
 
 	    Initializer.InitMesh(iter, Mesh, Phi, F, Updater, 0.0);
 
 #ifdef MULTIVAC_REPORT
-	    cout << "InitMesh: " << clock() - time << endl;
+	    cerr << "InitMesh: " << clock() - time << endl;
 	    time = clock();
 #endif
 
 	    Initializer.InitPhiAndF(iter, Mesh, Phi, F, Updater, 0.0);
 
 #ifdef MULTIVAC_REPORT
-	    cout << "InitPhiAndF: " << clock() - time << endl;
+	    cerr << "InitPhiAndF: " << clock() - time << endl;
 	    time = clock();
 #endif
 
@@ -234,7 +234,7 @@ namespace Multivac
 					 iter, Initializer);
 
 #ifdef MULTIVAC_REPORT
-	    cout << "SaveAtCurrentIteration: " << clock() - time
+	    cerr << "SaveAtCurrentIteration: " << clock() - time
 		 << endl << endl;
 #endif
 

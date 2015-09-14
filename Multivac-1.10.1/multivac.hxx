@@ -113,15 +113,15 @@
 /**** Convenient macros ****/
 
 #ifndef ERR
-#define ERR(x) cout << "Hermes - " #x << endl
+#define ERR(x) cerr << "Hermes - " #x << endl
 #endif
 
 #ifndef DISPLAY
-#define DISPLAY(x) cout << #x ": " << x << endl
+#define DISPLAY(x) cerr << #x ": " << x << endl
 #endif
 
 #ifndef DISP
-#define DISP(x) cout << #x ": " << x << endl
+#define DISP(x) cerr << #x ": " << x << endl
 #endif
 
 

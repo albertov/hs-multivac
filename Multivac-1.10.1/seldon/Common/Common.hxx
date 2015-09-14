@@ -27,8 +27,8 @@ template <class T>
 void PrintArray(T* v, int lgth)
 {
   for (int k = 0; k < lgth - 1; k++)
-    std::cout << v[k] << " | ";
-  std::cout << v[lgth - 1] << std::endl;
+    std::cerr << v[k] << " | ";
+  std::cerr << v[lgth - 1] << std::endl;
 }
 
 namespace Seldon

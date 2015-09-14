@@ -42,19 +42,19 @@ namespace Multivac
   public:
     CError()
     {
-      cout << "ERROR!" << endl;
+      cerr << "ERROR!" << endl;
       function = "";
       comment = "";
     }
     CError(string f)
     {
-      cout << "ERROR!" << endl;
+      cerr << "ERROR!" << endl;
       function = f;
       comment = "";
     }
     CError(string f, string c)
     {
-      cout << "ERROR!" << endl;
+      cerr << "ERROR!" << endl;
       function = f;
       comment = c;
     }
@@ -63,13 +63,13 @@ namespace Multivac
     }
     virtual void What()
     {
-      cout << "An undefined error occured";
+      cerr << "An undefined error occured";
       if (!function.empty())
-	cout << " in " << function;
-      cout << "." << endl;
+	cerr << " in " << function;
+      cerr << "." << endl;
       if (!comment.empty())
-	cout << "   " << comment << "." << endl;
-      cout << endl;
+	cerr << "   " << comment << "." << endl;
+      cerr << endl;
     }
   };
 
@@ -94,13 +94,13 @@ namespace Multivac
     }
     virtual void What()
     {
-      cout << "Error while performing an I/O operation (with files)";
+      cerr << "Error while performing an I/O operation (with files)";
       if (!this->function.empty())
-	cout << " in " << this->function;
-      cout << "." << endl;
+	cerr << " in " << this->function;
+      cerr << "." << endl;
       if (!this->comment.empty())
-	cout << "   " << this->comment << "." << endl;
-      cout << endl;
+	cerr << "   " << this->comment << "." << endl;
+      cerr << endl;
     }
   };
 
@@ -124,13 +124,13 @@ namespace Multivac
     }
     virtual void What()
     {
-      cout << "Computation outside the domain";
+      cerr << "Computation outside the domain";
       if (!this->function.empty())
-	cout << " in " << this->function;
-      cout << "." << endl;
+	cerr << " in " << this->function;
+      cerr << "." << endl;
       if (!this->comment.empty())
-	cout << "   " << this->comment << "." << endl;
-      cout << endl;
+	cerr << "   " << this->comment << "." << endl;
+      cerr << endl;
     }
   };
 
@@ -154,13 +154,13 @@ namespace Multivac
     }
     virtual void What()
     {
-      cout << "Computations stopped because of an instability";
+      cerr << "Computations stopped because of an instability";
       if (!this->function.empty())
-	cout << " in " << this->function;
-      cout << "." << endl;
+	cerr << " in " << this->function;
+      cerr << "." << endl;
       if (!this->comment.empty())
-	cout << "   " << this->comment << "." << endl;
-      cout << endl;
+	cerr << "   " << this->comment << "." << endl;
+      cerr << endl;
     }
   };
 
@@ -185,13 +185,13 @@ namespace Multivac
     }
     virtual void What()
     {
-      cout << "An incompatibility has been detected in your choices";
+      cerr << "An incompatibility has been detected in your choices";
       if (!this->function.empty())
-	cout << " in " << this->function;
-      cout << "." << endl;
+	cerr << " in " << this->function;
+      cerr << "." << endl;
       if (!this->comment.empty())
-	cout << "   " << this->comment << "." << endl;
-      cout << endl;
+	cerr << "   " << this->comment << "." << endl;
+      cerr << endl;
     }
   };
 
@@ -215,13 +215,13 @@ namespace Multivac
     }
     virtual void What()
     {
-      cout << "Function ";
+      cerr << "Function ";
       if (!this->function.empty())
-	cout << this->function;
-      cout << " is not defined." << endl;
+	cerr << this->function;
+      cerr << " is not defined." << endl;
       if (!this->comment.empty())
-	cout << "   " << this->comment << "." << endl;
-      cout << endl;
+	cerr << "   " << this->comment << "." << endl;
+      cerr << endl;
     }
   };
   

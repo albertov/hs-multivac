@@ -446,10 +446,10 @@ namespace Seldon
 	for (j = 0; j < this->GetLength2(); j++)
 	  {
 	    for (k = 0; k < this->GetLength3(); k++)
-	      cout << (*this)(i, j, k) << '\t';
-	    cout << endl;
+	      cerr << (*this)(i, j, k) << '\t';
+	    cerr << endl;
 	  }
-	cout << endl;
+	cerr << endl;
       }
   }
 

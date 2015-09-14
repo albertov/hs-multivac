@@ -98,22 +98,22 @@ return 1;\
 }\
 catch (std::exception& Err)\
 {\
-cout << "C++ exception: " << Err.what() << endl;\
+cerr << "C++ exception: " << Err.what() << endl;\
 return 1;\
 }\
 catch (std::string& str)\
 {\
-cout << str << endl;\
+cerr << str << endl;\
 return 1;\
 }\
 catch (const char* str)\
 {\
-cout << str << endl;\
+cerr << str << endl;\
 return 1;\
 }\
 catch(...)\
 {\
-cout << "Unknown exception..." <<endl;\
+cerr << "Unknown exception..." <<endl;\
 return 1;\
 }
 

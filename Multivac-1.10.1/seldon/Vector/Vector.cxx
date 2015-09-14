@@ -563,8 +563,8 @@ namespace Seldon
   void Vector<T, Vect_Full, Allocator>::Print() const
   {
     for (int i = 0; i < this->GetLength(); i++)
-      cout << (*this)(i) << "\t";
-    cout << endl;
+      cerr << (*this)(i) << "\t";
+    cerr << endl;
   }
 
 

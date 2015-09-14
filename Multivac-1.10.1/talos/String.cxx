@@ -492,10 +492,10 @@ namespace Talos
   void print(const vector<T>& v)
   {
     if (v.size() != 0)
-      cout << v[0];
+      cerr << v[0];
     for (unsigned int i = 1; i < v.size(); i++)
-      cout << '\t' << v[i];
-    cout << endl;
+      cerr << '\t' << v[i];
+    cerr << endl;
   }
   
 }  // namespace Talos.
