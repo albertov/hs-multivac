@@ -28,9 +28,15 @@ namespace HsMultivac
 					CInitializer<T>& Initializer)
     {
       if (time >= m_nextTime) {
-        m_fronts.push_back(Curve<T>());
         Initializer.BuildCurveForDisplay(iter, Mesh, Phi);
-        m_fronts.back().Copy(Initializer.GetFront());
+        Curve<T>& front = Initializer.GetFront();
+        List<Vector<T> >& points = front.GetPoints();
+        if (!points.IsEmpty()) {
+          points.GoToTheHead();
+          points.AddAtTheEnd(points.GetCurrentValue());
+        }
+        m_fronts.push_back(Curve<T>());
+        m_fronts.back().Copy(front);
         m_nextTime += m_period;
       }
     }

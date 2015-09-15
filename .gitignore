@@ -4,3 +4,4 @@ results
 cabal.sandbox.config
 .*.sw?
 Prueba*
+*.bak

@@ -1,5 +1,17 @@
 #include "cbits.h"
 
+MVUpdaterH
+MVNewUpdater (int TubeSemiWidth, int BarrierWidth, int OutSpaceWidth)
+{
+  UpdaterType *up = new UpdaterType(TubeSemiWidth, BarrierWidth, OutSpaceWidth);
+  return static_cast<MVUpdaterH>(up);
+}
+
+void MVDestroyUpdater(MVUpdaterH upH)
+{
+  UpdaterType *up = static_cast<UpdaterType*>(upH);
+  delete up;
+}
 
 MVMeshH
 MVNewMesh ( double Xmin, double Xmax, double Ymin, double Ymax
@@ -106,7 +118,7 @@ void MVDestroyFrontArray(MVFrontH array) {
 
 
 HsException Simulate( MVMeshH meshH, MVSpeedH speedH, MVFrontH frontH
-                    , MVFrontArrayH frontsH
+                    , MVFrontArrayH frontsH, MVUpdaterH updaterH
                     , int NbIterations, double FinalTime, double Period)
 {
   TRY;
@@ -114,13 +126,11 @@ HsException Simulate( MVMeshH meshH, MVSpeedH speedH, MVFrontH frontH
   MeshType Mesh(*static_cast<MeshType*>(meshH));
   SpeedType F(*static_cast<SpeedType*>(speedH));
   InitialCurveType InitialCurve(*static_cast<CurveType*>(frontH));
+  UpdaterType Updater(*static_cast<UpdaterType*>(updaterH));
   FrontArrayType* fronts(static_cast<FrontArrayType*>(frontsH));
 
   LevelSetType Phi;
   InitializerType Initializer;
-
-  UpdaterType Updater(6, 3, 1);
-
   SaverType Saver(*fronts, Period);
 
   SimulatorType Simulator( Mesh, F, InitialCurve, Phi, Initializer, Updater

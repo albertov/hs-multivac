@@ -20,7 +20,7 @@ namespace HsMultivac {
   typedef Curve<double> CurveType;
   typedef CSetOfPoints<double> InitialCurveType;
   typedef COrthogonalLevelSet<double> LevelSetType;
-  typedef CNarrowBandExtension<double> InitializerType;
+  typedef CNarrowBandNeverInit<double> InitializerType;
   typedef CNarrowBandFirstOrderEngquistOsher<double> UpdaterType;
   typedef vector<CurveType> FrontArrayType;
   typedef CMemorySaver<double> SaverType;
@@ -43,6 +43,15 @@ extern "C" {
  */
 
 HsException multivacError(const char* msg);
+
+// MVUpdaterH
+
+typedef void *MVUpdaterH;
+
+MVUpdaterH
+MVNewUpdater (int TubeSemiWidth, int BarrierWidth, int OutSpaceWidth);
+
+void MVDestroyUpdater(MVUpdaterH);
 
 // MVMeshH
 
@@ -94,8 +103,7 @@ void MVDestroyFrontArray(MVFrontArrayH array);
 
 // Simulate
 
-HsException Simulate( MVMeshH meshH, MVSpeedH speedH, MVFrontH frontH
-                    , MVFrontArrayH
+HsException Simulate( MVMeshH, MVSpeedH, MVFrontH, MVFrontArrayH, MVUpdaterH
                     , int NbIterations, double FinalTime, double Period);
 
 

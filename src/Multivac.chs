@@ -8,6 +8,7 @@ module Multivac (
   , Front (..)
   , Point (..)
   , Orientation (..)
+  , Updater (..)
 
   , FastMarchSpeedFunc
   , NarrowBandSpeedFunc
@@ -27,7 +28,6 @@ import Foreign.Ptr
 import Foreign.StablePtr
 import Foreign.Storable
 import Foreign.ForeignPtr
-import System.IO.Unsafe (unsafePerformIO)
 import GHC.Exts (inline)
 
 import qualified Data.Vector.Storable as St
@@ -39,6 +39,7 @@ import Point (Point(..))
 data Simulation = Simulation {
     simMesh          :: Mesh
   , simSpeed         :: Speed
+  , simUpdater       :: Updater
   , simNumIterations :: Int
   , simFinalTime     :: Double
   , simInitialFront  :: Front
@@ -48,6 +49,12 @@ data Simulation = Simulation {
 data Front = Front {
     frontCurve       :: St.Vector Point
   , frontOrientation :: Orientation
+  } deriving (Show)
+
+data Updater = Updater {
+    upTubeSemiWidth :: Int
+  , upBarrierWidth  :: Int
+  , upOutSpaceWidth :: Int
   } deriving (Show)
 
 data Mesh = Mesh {
@@ -73,7 +80,7 @@ data Speed = Speed {
 simulate :: Simulation -> IO (V.Vector Front)
 simulate Simulation{..} = do
   fronts <- newFrontArray
-  c_Simulate simMesh simSpeed simInitialFront fronts simNumIterations
+  c_Simulate simMesh simSpeed simInitialFront fronts simUpdater simNumIterations
              simFinalTime simSavePeriod
   toFrontVector fronts
 {-# INLINE simulate #-}
@@ -126,15 +133,15 @@ wrapMaxFSpeedFunc f =
 {-# INLINE wrapMaxFSpeedFunc #-}
 
 
-toFrontH :: Front -> FrontH
+toFrontH :: Front -> IO FrontH
 toFrontH f
-  | St.null v = error "Empty front"
-  | otherwise = unsafePerformIO $ St.unsafeWith v (c_newFront n o . castPtr)
+  | St.null v = fail "Empty front"
+  | otherwise = St.unsafeWith v (c_newFront n o . castPtr)
   where Front{frontCurve=v, frontOrientation=o} = f
         n = St.length v
 
 withFront :: Front -> (Ptr FrontH -> IO a) -> IO a
-withFront = withFrontH . toFrontH
+withFront fr f = toFrontH fr >>= flip withFrontH f
 
 fromFrontH :: FrontH -> IO Front
 fromFrontH f = do
@@ -151,8 +158,8 @@ toFrontVector a = do
     copyFrontAt a ix front
     fromFrontH front
 
-toSpeedH :: Speed -> SpeedH
-toSpeedH Speed{..} = unsafePerformIO $ do
+toSpeedH :: Speed -> IO SpeedH
+toSpeedH Speed{..} = do
   fm    <- wrapFastMarchSpeedFunc speedFastMarch
   nb    <- wrapNarrowBandSpeedFunc speedNarrowBand
   maxF1 <- wrapMaxFSpeedFunc speedMaxF1
@@ -161,14 +168,20 @@ toSpeedH Speed{..} = unsafePerformIO $ do
            speedDepPosition speedDepTime speedDepNormal speedDepCurvature
 
 withSpeed :: Speed -> (Ptr SpeedH -> IO a) -> IO a
-withSpeed = withSpeedH . toSpeedH
+withSpeed s f = toSpeedH s >>= flip withSpeedH f
 
-toMeshH :: Mesh -> MeshH
-toMeshH Mesh{..} = unsafePerformIO $
-  newMesh meshMinX meshMaxX meshMinY meshMaxY meshNX meshNY
+toMeshH :: Mesh -> IO MeshH
+toMeshH Mesh{..} = newMesh meshMinX meshMaxX meshMinY meshMaxY meshNX meshNY
 
 withMesh :: Mesh -> (Ptr MeshH -> IO a) -> IO a
-withMesh = withMeshH . toMeshH
+withMesh m f = toMeshH m >>= flip withMeshH f
+
+toUpdaterH :: Updater -> IO UpdaterH
+toUpdaterH Updater{..} =
+  newUpdater upTubeSemiWidth upBarrierWidth upOutSpaceWidth
+
+withUpdater :: Updater -> (Ptr UpdaterH -> IO a) -> IO a
+withUpdater u f = toUpdaterH u >>= flip withUpdaterH f
 
 --
 -- Error handling
@@ -263,8 +276,14 @@ peekEnum = fmap (toEnum . fromIntegral) . peek
 {#fun unsafe GetNumFronts as ^ {`FrontArrayH'} -> `Int' #}
 {#fun unsafe CopyFrontAt as ^ {`FrontArrayH', `Int', `FrontH'} -> `()' #}
 
-{#pointer MeshH foreign finalizer DestroyMesh as ^ newtype#}
+{#pointer UpdaterH foreign finalizer DestroyUpdater as ^ newtype#}
+{#fun unsafe NewUpdater as ^ {
+    `Int'
+  , `Int'
+  , `Int'
+  } -> `UpdaterH' #}
 
+{#pointer MeshH foreign finalizer DestroyMesh as ^ newtype#}
 {#fun unsafe NewMesh as ^ {
     `Double'
   , `Double'
@@ -293,6 +312,7 @@ peekEnum = fmap (toEnum . fromIntegral) . peek
   , withSpeed* `Speed'
   , withFront* `Front'
   , `FrontArrayH'
+  , withUpdater* `Updater'
   , `Int'
   , `Double'
   , `Double'
